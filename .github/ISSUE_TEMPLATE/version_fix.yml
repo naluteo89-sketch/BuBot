@@ -1,0 +1,89 @@
+name: Version Fix
+description: 특정 버전의 버그 수정 및 패치 기록
+title: "[Fix] vX.X.X - "
+labels: ["fix", "version"]
+assignees: []
+body:
+  - 입력: markdown
+    attributes:
+      value: |
+        ## 버전 픽스 이슈
+        특정 버전에서 발견된 버그를 수정하고 패치 내역을 기록합니다.
+
+  - 입력: input
+    id: affected_version
+    attributes:
+      label: 영향받는 버전 (Affected Version)
+      description: 버그가 발생한 버전을 입력하세요.
+      placeholder: "예: v1.2.3"
+    validations:
+      required: true
+
+  - 입력: input
+    id: fixed_version
+    attributes:
+      label: 수정 대상 버전 (Fix Version)
+      description: 이 버그가 수정되어 배포될 버전입니다.
+      placeholder: "예: v1.2.4"
+    validations:
+      required: true
+
+  - 입력: textarea
+    id: summary
+    attributes:
+      label: 버그 요약
+      description: 어떤 문제인지 간략히 설명해주세요.
+      placeholder: "예: 로그인 시 토큰 갱신 실패"
+    validations:
+      required: true
+
+  - 입력: textarea
+    id: cause
+    attributes:
+      label: 원인 (Cause)
+      description: 버그의 근본 원인을 작성하세요.
+      placeholder: "예: refresh_token 만료 시간 검증 로직 누락"
+    validations:
+      required: false
+
+  - 입력: textarea
+    id: solution
+    attributes:
+      label: 수정 내용 (Solution)
+      description: 어떻게 수정했는지 또는 수정할 계획을 작성하세요.
+      placeholder: "예: 만료 검증 로직 추가 및 단위 테스트 보강"
+    validations:
+      required: true
+
+  - 입력: dropdown
+    id: severity
+    attributes:
+      label: 심각도
+      options:
+        - Critical (서비스 중단)
+        - High (주요 기능 오류)
+        - Medium (일부 기능 오류)
+        - Low (경미한 문제)
+    validations:
+      required: true
+
+  - 입력: checkboxes
+    id: checklist
+    attributes:
+      label: 체크리스트
+      options:
+        - label: 재현 테스트 완료
+          required: false
+        - label: 수정 코드 리뷰 완료
+          required: false
+        - label: 릴리즈 노트 반영
+          required: false
+
+  - 입력: textarea
+    id: references
+    attributes:
+      label: 참고 자료
+      description: 관련 PR, 커밋, 로그 등을 첨부하세요.
+      placeholder: "#123, commit abc1234"
+    validations:
+      required: false
