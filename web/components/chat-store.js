@@ -50,7 +50,7 @@ export function showChatCount(state = loadChat()) {
     badge.setAttribute('aria-label', `질문 ${count}개`);
   }
   // 대화가 없으면 메뉴와 '진행 중인 대화로' 버튼을 숨깁니다 (서버가 만든 HTML도 기본은 숨김).
-  document.querySelectorAll('#chat-link, #history-chat-link').forEach(link => { link.hidden = !count; });
+  document.querySelectorAll('#chat-row, #history-chat-link').forEach(link => { link.hidden = !count; });
   const navTitle = document.querySelector('#chat-title');
   if (navTitle) {
     navTitle.textContent = title || DEFAULT_NAV;

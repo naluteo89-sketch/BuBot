@@ -2,6 +2,7 @@
 import argparse
 import ipaddress
 import json
+import os
 import socket
 import mimetypes
 import sys
@@ -9,13 +10,29 @@ import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Lock
+from threading import BoundedSemaphore, Lock
 from urllib.parse import unquote, urlsplit
 from . import service, history
 from .layout import render_layout
 
 ROOT = Path(__file__).resolve().parents[2] / "web"
-BUSY = Lock()
+# 동시 처리: 서로 다른 대화는 동시에, 같은 대화(세션)는 한 번에 한 질문씩 처리합니다.
+# (예전에는 서버 전체가 한 질문씩만 처리해 두 사람이 동시에 물으면 한 명은 429를 받았습니다.)
+MAX_CONCURRENT = max(1, int(os.getenv("BUBOT_MAX_CONCURRENT", "4")))     # 동시에 처리할 질문 수
+QUEUE_WAIT_SECONDS = float(os.getenv("BUBOT_QUEUE_WAIT_SECONDS", "30"))  # 자리가 없을 때 기다리는 최대 시간
+SLOTS = BoundedSemaphore(MAX_CONCURRENT)
+_session_locks = {}
+_session_locks_guard = Lock()
+
+
+def session_lock(session_id):
+    """세션별 잠금. 같은 대화의 질문이 겹치면 대화 기억 순서가 꼬이므로 하나씩 처리합니다."""
+    key = session_id if isinstance(session_id, str) else ""
+    with _session_locks_guard:
+        if len(_session_locks) > 1000:  # 오래된 세션 잠금 정리 (사용 중이 아닌 것만)
+            for stale in [k for k, lock in _session_locks.items() if not lock.locked()]:
+                del _session_locks[stale]
+        return _session_locks.setdefault(key, Lock())
 CSP = "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'"
 
 
@@ -117,10 +134,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, service.reset(payload))
             except ValueError as error:
                 return self.send(400, {"error": str(error)})
-        if not BUSY.acquire(blocking=False):
-            return self.send(429, {"error": "다른 질문을 처리 중입니다. 잠시 후 다시 시도하세요."})
+        lock = session_lock(payload.get("session_id") if isinstance(payload, dict) else None)
+        if not lock.acquire(blocking=False):
+            return self.send(429, {"error": "이 대화의 이전 질문을 처리 중입니다. 답변이 나온 뒤 다시 질문해 주세요."})
+        if not SLOTS.acquire(timeout=QUEUE_WAIT_SECONDS):
+            lock.release()
+            return self.send(503, {"error": "지금 질문하는 사람이 많아 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."})
         started = time.perf_counter()
         try:
+            try:
+                service.check_rate(payload)
+            except service.RateLimited as error:
+                return self.send(429, {"error": str(error)})
             try:
                 code, result = 200, service.answer(payload)
             except ValueError as error:
@@ -143,7 +168,8 @@ class Handler(BaseHTTPRequestHandler):
                     result["error"] += " " + warning
             self.send(code, result)
         finally:
-            BUSY.release()
+            SLOTS.release()
+            lock.release()
 
 
 def main():

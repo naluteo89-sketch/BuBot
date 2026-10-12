@@ -3,7 +3,9 @@ import {request} from './api.js';
 import {message} from './components/message.js';
 import {composer} from './components/composer.js';
 import {status} from './components/status.js';
-import {loadChat, saveChat, clearChat, showChatCount} from './components/chat-store.js';
+import {loadChat, saveChat, clearChat, showChatCount, chatTitle} from './components/chat-store.js';
+import {copyToClipboard, plainAnswer} from './components/clipboard.js';
+import './components/sidebar.js';
 
 const log = document.querySelector('#messages');
 const empty = document.querySelector('#chat-empty');
@@ -52,31 +54,6 @@ function renderTurn(record) {
 }
 
 // ── 질문·답변 복사와 다시 질문 ─────────────────────────────
-const CHECK_MARK = '[수치 확인 필요]';
-function plainAnswer(text = '') {
-  const at = text.indexOf(CHECK_MARK);
-  if (at < 0) return text.trim();
-  return text.slice(0, at).trim() + '\n\n※ 일부 수치는 계산 근거와 다를 수 있어요. 원본 값을 확인해 주세요.';
-}
-// 휴대폰에서 http://192.168.x.x 로 접속하면 보안 연결이 아니라 Clipboard API를 쓸 수 없어 예전 방식으로 복사합니다.
-async function copyToClipboard(text) {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch { /* 아래 방식으로 다시 시도 */ }
-  const area = document.createElement('textarea');
-  area.value = text;
-  area.setAttribute('readonly', '');
-  area.className = 'clipboard-proxy';
-  document.body.append(area);
-  area.select();
-  let copied = false;
-  try { copied = document.execCommand('copy'); } catch { copied = false; }
-  area.remove();
-  return copied;
-}
 function actionButton(icon, label, onClick) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -113,7 +90,8 @@ function answerActions(record) {
   const bar = document.createElement('div');
   bar.className = 'turn-actions answer-actions';
   bar.append(actionButton('⧉', '답변 복사', async button => {
-    flash(button, await copyToClipboard(plainAnswer(record.answer)) ? '복사했어요' : '복사하지 못했어요');
+    const note = record.data?.source_note ? `\n\n${record.data.source_note}` : '';
+    flash(button, await copyToClipboard(plainAnswer(record.answer) + note) ? '복사했어요' : '복사하지 못했어요');
   }));
   return bar;
 }
@@ -130,7 +108,8 @@ async function send(question, unit) {
   input.busy(true);
   reset.disabled = true;
   const turn = turnElement(question, unit);
-  const hadHistory = state.turns.length > 0;
+  // 서버가 실제로 받아 답한 질문만 '이전 대화'로 셉니다 (연결 실패·처리 중 거절된 질문은 서버 기억에 없음).
+  const hadHistory = state.turns.some(turn => !turn.pending && !turn.error);
   // 답변 전에 페이지를 옮겨도 질문이 남도록 '대기 중'으로 먼저 저장합니다.
   const record = {question, unit, pending: true, at: Date.now()};
   commit(turns => turns.push(record));
@@ -145,7 +124,8 @@ async function send(question, unit) {
     pending.replaceWith(message('assistant', data.answer, data));
     record.answer = data.answer;
     record.data = data;
-    if (hadHistory && data.memory_used === 0) {
+    // 서버가 기억 수를 알려 줬는데(memory_turns > 0) 이전 대화를 하나도 쓰지 못했으면 만료(2시간·재시작)입니다.
+    if (hadHistory && data.memory_turns > 0 && data.memory_used === 0) {
       record.note = MEMORY_RESET;
       turn.append(message('error', MEMORY_RESET));
     }
@@ -210,6 +190,22 @@ if (firstQuestion) {
     announcement.textContent = `이전 대화 ${state.turns.length}개를 불러왔어요.`;
   }
   input.focus();
+}
+
+// ── PDF 저장(인쇄) ─────────────────────────────────
+// 인쇄할 때는 접힌 '계산 근거와 출처'를 펼치고 머리에 제목·날짜를 넣습니다. 끝나면 원래대로 돌립니다.
+let reopened = [];
+window.addEventListener('beforeprint', () => {
+  reopened = [...log.querySelectorAll('details:not([open])')];
+  reopened.forEach(details => { details.open = true; });
+  const meta = document.querySelector('#print-meta');
+  const now = new Date();
+  meta.textContent = `BuBot 대화 기록 · ${chatTitle(state.turns) || '대화'} · ${now.toLocaleString('ko-KR')} · 질문 ${state.turns.length}개`;
+});
+window.addEventListener('afterprint', () => { reopened.forEach(details => { details.open = false; }); reopened = []; });
+if (params.get('print') && state.turns.length) {
+  history.replaceState(null, '', location.pathname);
+  setTimeout(() => window.print(), 400);
 }
 
 request('api/status').then(data => status(document.querySelector('#status'), data)).catch(() => {

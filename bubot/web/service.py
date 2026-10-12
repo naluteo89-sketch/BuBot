@@ -1,7 +1,8 @@
 """웹 응답 변환. 자격증명과 서버 경로는 브라우저에 전달하지 않습니다."""
 from collections import defaultdict
 
-from bubot.config import DISPLAY_PRICE_UNITS, PROJECT_NAME
+from bubot.answer_format import source_note, unify_units
+from bubot.config import DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, PROJECT_NAME
 from bubot.conversation import MEMORY, chat
 from bubot.source_display import SOURCE_LABEL
 
@@ -25,17 +26,25 @@ def answer(payload):
     if unit is not None and unit not in DISPLAY_PRICE_UNITS:
         raise ValueError("지원하지 않는 가격 단위입니다.")
     session_id = MEMORY.check(payload.get("session_id"))
+    remembered = MEMORY.size(session_id)  # 이번 질문 전에 서버가 기억하던 대화 수
     try:
         result = chat(session_id, question.strip(), unit=unit)
     except ValueError as error:
         # 지역 없음·보유 기간 밖 같은 안내도 오류 화면이 아니라 답변으로 보여 줍니다 (대화 메모리에는 chat이 기록).
+        # 화면의 '기억 만료' 안내가 잘못 뜨지 않도록 이 경로에도 메모리 사용 수를 채웁니다.
         result = {"answer": str(error), "analysis": {"intent": "clarify", "reason": "guidance"},
-                  "standalone_question": getattr(error, "standalone_question", "") or question.strip()}
+                  "standalone_question": getattr(error, "standalone_question", "") or question.strip(),
+                  "memory_used": remembered, "memory_turns": MEMORY.size(session_id)}
     response = {key: result.get(key, default) for key, default in
                 (("answer", ""), ("facts", []), ("sources", []),
                  ("standalone_question", ""), ("followup", False), ("input_converted", False),
-                 ("memory_turns", 0), ("memory_used", 0), ("timings", {}), ("cached", False))}
+                 ("memory_turns", 0), ("memory_used", 0), ("timings", {}), ("cached", False),
+                 ("choices", []))}
     response["route"] = route_of(result)
+    # 화면 표기 정리: 금액 단위를 한 가지로 맞추고, 답변마다 같은 형식의 한 줄 출처를 붙입니다.
+    display = (result.get("analysis") or {}).get("display_unit") or unit or DISPLAY_PRICE_UNIT
+    response["answer"] = unify_units(response["answer"], display)
+    response["source_note"] = source_note(response["sources"])
     response["answer_check"] = (result.get("analysis") or {}).get("answer_check", "")
     retrieval = (result.get("analysis") or {}).get("retrieval") or {}
     response["retrieved"] = [f"{doc_id} ({pool}, 거리 {distance})" for doc_id, pool, distance in retrieval.get("used", [])]

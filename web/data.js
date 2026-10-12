@@ -1,3 +1,4 @@
+import './components/sidebar.js';
 import {request} from './api.js';
 import {status} from './components/status.js';
 import {showChatCount} from './components/chat-store.js';

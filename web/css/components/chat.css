@@ -111,3 +111,5 @@
 @media (max-width: 480px) { .turn-action { font-size: 12.5px; padding: 5px 11px; } }
 .question-actions { align-self: flex-end; margin-top: -15px; }
 .answer-actions { margin-top: -12.5px; }
+.chat-log .message.assistant .source-note { margin: 20px 0 0; font-size: 13.75px; line-height: 1.6; color: #a9c4b8; }
+@media (max-width: 480px) { .chat-log .message.assistant .source-note { font-size: 12px; } }

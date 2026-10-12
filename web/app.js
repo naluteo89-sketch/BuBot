@@ -1,4 +1,5 @@
 // 첫 화면: 질문을 입력하면 대화 화면(chat.html)으로 이동합니다. 진행 중인 대화가 있으면 그 대화에 이어집니다.
+import './components/sidebar.js';
 import {request} from './api.js';
 import {composer} from './components/composer.js';
 import {suggestions} from './components/suggestions.js';

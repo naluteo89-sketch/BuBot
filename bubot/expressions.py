@@ -55,6 +55,14 @@ AMBIGUOUS_PLACES = {'광교': '수원시 영통구, 용인시 수지구', '위�
 EVENTS = [(r'코로나\s*(?:전|이전|직전)', '2019-12', '코로나19 이전을 2019년 12월로 보았습니다.')]
 
 
+def ambiguous_place_candidates(question):
+    """'광교' → ('광교', ['수원시 영통구', '용인시 수지구']). 선택지 버튼용."""
+    for place, candidates in AMBIGUOUS_PLACES.items():
+        if place in question and ',' in candidates:
+            return place, [c.strip() for c in candidates.split(',')]
+    return None
+
+
 def ambiguous_place(question):
     """'광교 집값'처럼 여러 시군구에 걸친 생활권이면 확인 안내문. 아니면 None."""
     for place, candidates in AMBIGUOUS_PLACES.items():

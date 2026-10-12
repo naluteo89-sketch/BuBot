@@ -175,6 +175,76 @@ class WholePeriodMeanTests(unittest.TestCase):
         self.assertEqual(self.bounds('서울 최근 3년 평균 가격')[1:], ('2023-09', self.corpus.months[-1]))
 
 
+class RegionRecordsTests(unittest.TestCase):
+    """10/12 테스트: '제주도 데이터 전부 (26년 기준)'이 보유 범위 안내만 하고 값을 보여주지 않던 문제."""
+    @classmethod
+    def setUpClass(cls):
+        from bubot.year_query import region_records
+        cls.corpus = read_corpus()
+        cls.records = staticmethod(lambda q: region_records(q, cls.corpus, '천원'))
+
+    def test_all_records_ask_about_sub_regions_with_buttons(self):
+        # 사용자 요청(10/12): 하위 지역(제주시·서귀포시)이 있으면 바로 섞지 말고 '필요하신가요?'와 선택지 버튼
+        result = self.records('제주도에 관한 데이터를 전부 가져와 일자는 26년도 기준이고')
+        months = [m for m in self.corpus.months if m.startswith('2026-')]
+        self.assertEqual(len(result['facts']), len(months))
+        self.assertTrue(result['answer'].startswith('제주의 2026-01 ~ 2026-'))
+        self.assertIn('하위 지역(제주시·서귀포시)이 있습니다. 하위 지역 값도 필요하신가요?', result['answer'])
+        self.assertEqual([c['label'] for c in result['choices']], ['하위 지역 2곳 모두 함께 보기', '제주시만 보기', '서귀포시만 보기'])
+        self.assertEqual(result['choices'][0]['question'], '2026년 제주 하위 지역 포함 기록 전부')
+
+    def test_sub_region_button_question_lists_all_three_rows(self):
+        # 버튼이 보내는 질문은 원본의 제주·제주시·서귀포시 3개 행을 모두 보여주고 다시 묻지 않음
+        result = self.records('2026년 6월 제주 하위 지역 포함 기록 전부')
+        self.assertEqual([f.split(':')[0] for f in result['facts']],
+                         ['2026-06 제주', '2026-06 제주 / 제주시', '2026-06 제주 / 서귀포시'])
+        self.assertEqual(result['choices'], [])
+        whole = self.records('2026년 제주 하위 지역 포함 기록 전부')
+        self.assertEqual(len(whole['facts']), 3 * len([m for m in self.corpus.months if m.startswith('2026-')]))
+
+    def test_button_questions_name_one_region(self):
+        result = self.records('광주광역시 2026년 8월 기록 전부')
+        questions = [c['question'] for c in result['choices']]
+        self.assertEqual(questions[0], '2026년 8월 광주광역시 하위 지역 포함 기록 전부')
+        self.assertIn('2026년 8월 광주 북구 기록 전부', questions)
+        north = self.records('2026년 8월 광주 북구 기록 전부')
+        self.assertEqual([f.split(':')[0] for f in north['facts']], ['2026-08 전남광주 / 광주 / 북구'])
+
+    def test_large_region_offers_only_show_all_button(self):
+        result = self.records('경기 2026년 3월 기록 전부')
+        self.assertEqual(len(result['facts']), 1)
+        self.assertEqual([c['label'] for c in result['choices']][0][:5], '하위 지역')
+        self.assertLessEqual(len(result['choices']), 6)
+
+    def test_format_echo_paragraph_is_removed(self):
+        # 실제 답변(10/12): '결론에 없는 보조 맥락이 없습니다.' — 형식 지시문을 따라 쓴 문단
+        from bubot.rag_service import _drop_format_echo
+        self.assertEqual(_drop_format_echo('결론입니다.\n\n- 2026-06 제주: 1\n\n결론에 없는 보조 맥락이 없습니다.'),
+                         '결론입니다.\n\n- 2026-06 제주: 1')
+        self.assertEqual(_drop_format_echo('결론.\n\n확인되지 않는 부분은 없습니다.'), '결론.')
+        kept = '결론.\n\n2025년 자료는 없어 2026년 기준입니다.'
+        self.assertEqual(_drop_format_echo(kept), kept)
+
+    def test_ambiguous_name_candidates_become_buttons(self):
+        from bubot.rag_service import _candidate_choices
+        choices = _candidate_choices('중구 2026년 8월 가격', '중구',
+                                     ['서울 / 강북지역 / 도심권 / 중구', '부산 / 중부산권 / 중구'])
+        self.assertEqual(choices, [{'label': '서울 중구', 'question': '서울 중구 2026년 8월 가격'},
+                                   {'label': '부산 중구', 'question': '부산 중구 2026년 8월 가격'}])
+        with patch('bubot.rag_service.open_index', return_value=(self.corpus, knowledge_collection())):
+            place = ask('광교 집값')
+        self.assertEqual([c['question'] for c in place['choices']], ['수원시 영통구 집값', '용인시 수지구 집값'])
+
+    def test_other_questions_are_not_listings(self):
+        for question in ('제주 2025년 평균', '제주 2026년 데이터 전부 평균', '제주 6월 기록 전부', '전부 보여줘 2026년'):
+            self.assertIsNone(self.records(question), question)
+
+    def test_month_without_year_inherits_previous_turn(self):
+        from bubot.rag_service import _self_contained
+        self.assertFalse(_self_contained('제주도에 해당하는 기록 6월치 전부'))
+        self.assertTrue(_self_contained('2026년 6월 제주도 기록 전부'))
+
+
 class PlaceLocationTests(unittest.TestCase):
     """10/12 테스트: '5년전 챔피언스 필드 근처 집값'이 지역을 못 찾아 되묻기만 하던 문제 (실제 API 미호출)."""
     @classmethod

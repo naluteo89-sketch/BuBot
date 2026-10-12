@@ -1,0 +1,25 @@
+/* PDF로 저장(인쇄): 화면 디자인 그대로, 대화만 남기고 잘림 없이 */
+.print-only { display: none; }
+@media print {
+  @page { size: A4; margin: 12mm 11mm; }
+  /* 짙은 답변 박스·말풍선 배경이 빠지지 않도록 색을 그대로 인쇄합니다 */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; animation: none !important; transition: none !important; }
+  html, body { background: var(--bg); }
+
+  /* 대화 외 요소 숨김 */
+  aside, .chat-dock, .turn-actions, .skip-link, .sidebar-resizer, #chat-empty, #announcement { display: none !important; }
+
+  /* 본문을 용지 폭에 맞춤 (고정·최소 높이 해제) */
+  .layout { display: block; min-height: 0; }
+  main, .chat-main { width: auto; max-width: none; min-height: 0 !important; margin: 0; padding: 0; }
+  .chat-log { max-width: none; padding-top: 22px; }
+  header { min-height: 0; padding-bottom: 14px; }
+  #chat-heading.is-question { white-space: normal; overflow: visible; text-overflow: clip; }
+  .print-only { display: block; margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+
+  /* 페이지 나눔: 말풍선은 쪼개지 않고, 긴 답변 박스는 다음 쪽으로 이어지게 */
+  .chat-turn { break-inside: auto; }
+  .chat-log .message.user, .answer-check, .message-body.rich .facts li { break-inside: avoid; }
+  .chat-log .message.assistant { break-inside: auto; box-shadow: none; }
+  .chat-log .message.assistant details li { overflow-wrap: anywhere; }
+}

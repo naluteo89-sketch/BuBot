@@ -20,14 +20,14 @@ from .regions import ALIASES, region_catalog, resolve_region, gwangju_clarificat
 from .retrieval import argmax_price, argmin_price
 from .schemas import Analysis
 from .coverage import explicit_years, year_coverage
-from .year_query import last_year_answer, resolve_relative_years
+from .year_query import last_year_answer, region_records, resolve_relative_years
 from .declines import declining_regions
 from .period_queries import aggregate_query, negative_concept, correction_query, annual_mean_concept
 from .answer_check import number_issues
 from .answer_cache import ANSWER_CACHE, cache_key
 from .keyboard import keyboard_to_hangul
 from .query_parser import find_cues, find_regions, find_top_n, parse_period, parse_question
-from .expressions import ambiguous_place, rewrite
+from .expressions import ambiguous_place, ambiguous_place_candidates, rewrite
 from .price_filter import out_of_scope, price_filter
 
 
@@ -357,6 +357,16 @@ def _fit_budget(contexts, budget=CONTEXT_CHAR_BUDGET):
             {**c, 'text': c['text'][:cap] + '\n…(분량 제한으로 이하 생략. 수치는 verified_facts 기준)'} for c in kept]
 
 
+# GPT가 답변 형식 지시문을 따라 쓰는 문단 ('결론에 없는 보조 맥락이 없습니다', '확인되지 않는 부분은 없습니다')
+FORMAT_ECHO = re.compile(r'^(?:결론에\s*없는\s*)?(?:보조\s*맥락|참고\s*(?:사항|내용)|한계|확인되지\s*않는\s*부분)'
+                         r'(?:은|는|이|가)?\s*(?:특별히\s*)?(?:없|해당\s*없)[^\n]*$')
+
+
+def _drop_format_echo(answer):
+    paragraphs = [p for p in answer.split('\n\n') if not FORMAT_ECHO.match(p.strip())]
+    return '\n\n'.join(paragraphs).strip() or answer
+
+
 def _fallback_answer(contexts, display, facts, error):
     """답변 생성(GPT)이 실패해도 이미 확보한 계산값·근거 원문으로 답합니다."""
     if facts:
@@ -364,8 +374,10 @@ def _fallback_answer(contexts, display, facts, error):
     else:
         text = contexts[0]['text']
         body = '질문과 가장 가까운 지식 문서 내용입니다.\n' + (text[:700] + '…' if len(text) > 700 else text)
-    return {'answer': body + '\n\n※ 문장형 답변 생성이 완료되지 않아 계산값·문서 원문으로 안내했습니다. '
-                             '잠시 후 다시 질문하면 문장형 답변을 받을 수 있습니다.',
+    from .usage import BudgetExceeded
+    reason = (str(error) if isinstance(error, BudgetExceeded) else
+              '문장형 답변 생성이 완료되지 않아 계산값·문서 원문으로 안내했습니다. 잠시 후 다시 질문하면 문장형 답변을 받을 수 있습니다.')
+    return {'answer': body + '\n\n※ ' + reason,
             'model': None, 'unit': display, 'used_context_ids': [c['id'] for c in contexts],
             'error_type': type(error).__name__}
 
@@ -386,6 +398,7 @@ def _generate(question, contexts, analysis, display, facts, timings):
         analysis['answer_check'] = 'fallback'
         analysis['generation_error'] = type(error).__name__
         return _fallback_answer(contexts, display, facts, error)
+    result = {**result, 'answer': _drop_format_echo(result['answer'])}
     evidence = [question, *facts, *(c['text'] for c in contexts)]
     issues = number_issues(result['answer'], evidence)
     analysis['answer_check'] = 'ok'
@@ -561,12 +574,19 @@ def _region_text(region, catalog):
     parts = region['label'].split(' / ')
     # 권역 이름('서남권', '강남지역')은 사람이 쓰는 주소가 아니므로 뺀 이름을 먼저 시도합니다 ('서울 강서구', '광주 북구').
     named = [x for x in parts if not x.endswith(('권', '지역')) and x != '전남광주']
-    forms = [' '.join(named[-2:]), named[-1] if named else '', f'{parts[0]} {parts[-1]}', ' '.join(parts[-2:]), ' '.join(parts)]
+    full = [alias for alias, short in ALIASES.items() if short == region['name'] and region['level'] == '시도']
+    forms = [' '.join(named[-2:]), named[-1] if named else '', *full, f'{parts[0]} {parts[-1]}', ' '.join(parts[-2:]), ' '.join(parts)]
     for text in dict.fromkeys(f for f in forms if f):
         found, ambiguous = named_region(text, catalog)
         if found and not ambiguous and found['id'] == region['id']:
             return text
     return None
+
+
+def _label_of(text):
+    """'수원시 영통구' 같은 이름 → 지역 label (없으면 원문)."""
+    region = _address_region(text, region_catalog(load_corpus()))
+    return region['label'] if region else text
 
 
 def _address_region(address, catalog):
@@ -576,9 +596,24 @@ def _address_region(address, catalog):
     return None if ambiguous else found
 
 
-def _clarify(answer, reason):
+def _clarify(answer, reason, choices=()):
     return 'answer', {'answer': answer, 'analysis': {'intent': 'clarify', 'reason': reason},
-                      'contexts': [], 'facts': [], 'sources': [], 'route': 'rule'}, None
+                      'contexts': [], 'facts': [], 'sources': [], 'route': 'rule', 'choices': list(choices)}, None
+
+
+def _candidate_choices(question, name, labels):
+    """후보 지역 버튼: 질문 속 모호한 이름(name)을 후보 지역 이름으로 바꾼 질문을 보냅니다."""
+    catalog = region_catalog(load_corpus())
+    by_label = {r['label']: r for r in catalog.values()}
+    choices = []
+    for label in labels:
+        region = by_label.get(label.strip())
+        text = region and _region_text(region, catalog)
+        if not text:
+            continue
+        asked = question.replace(name, text, 1) if name and name in question else f'{text} {question}'
+        choices.append({'label': text, 'question': ' '.join(asked.split())})
+    return choices
 
 
 def _locate(question, kwargs):
@@ -609,7 +644,8 @@ def _locate(question, kwargs):
     candidates = list(dict.fromkeys(r['label'] for r in (_address_region(a, catalog) for a in place.get('candidates') or []) if r))
     if name and len(candidates) >= 2:
         return _clarify(f"'{name}'은(는) 여러 지역에 걸쳐 있거나 같은 이름이 여러 곳이라 한 지역으로 정할 수 없습니다. "
-                        f"다음 중 하나를 골라 다시 물어보세요: {', '.join(candidates)}.", 'ambiguous_place')
+                        f"다음 중 하나를 골라 다시 물어보세요: {', '.join(candidates)}.", 'ambiguous_place',
+                        _candidate_choices(question, name, candidates))
     if PLACE_WORDS.search(question):
         # 장소를 특정하지 못했으면 다른 지역(전국 등)으로 대신 답하지 않고 되묻습니다.
         what = f"'{name}'의" if name else '말씀하신 장소의'
@@ -630,8 +666,14 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
                 'contexts': [], 'facts': [], 'sources': []}
     unanswerable = out_of_scope(question) or ambiguous_place(question)
     if unanswerable:
+        place = ambiguous_place_candidates(question)
+        choices = _candidate_choices(question, place[0], [_label_of(c) for c in place[1]]) if place else []
         return {'answer': unanswerable, 'analysis': {'intent': 'clarify', 'reason': 'out_of_scope'},
-                'contexts': [], 'facts': [], 'sources': [], 'route': 'rule'}
+                'contexts': [], 'facts': [], 'sources': [], 'route': 'rule', 'choices': choices}
+    # '제주도 데이터 전부'처럼 값 목록을 원하면 연도 보유 범위 안내 대신 보유 월의 값을 나열합니다 (하위 지역 포함).
+    records = region_records(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
+    if records is not None:
+        return records
     filtered = price_filter(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
     if filtered is not None:
         return filtered
@@ -778,8 +820,13 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     contexts=contexts+support
     result=_generate(question,contexts,analysis,display,facts,timings)
     sources=[_source_line(c) for c in contexts]
+    choices=[]
+    if intent=='lookup' and len(ids)==1:
+        # 하위 지역이 있으면 '하위 지역 값도 필요하신가요?' 선택지 버튼 (예: 광주 → 동구·서구·남구·북구·광산구)
+        from .year_query import subregion_choices
+        choices,_=subregion_choices(catalog[ids[0]],catalog,f"{target_month[:4]}년 {int(target_month[5:])}월",'기록 전부')
     return {**result,'analysis':analysis,'contexts':contexts,'facts':facts,'sources':sources,'route':'numeric',
-            'timings':timings}
+            'timings':timings,'choices':choices}
 
 
 AMBIGUOUS_REGION = '확정할 수 없습니다'
@@ -791,6 +838,8 @@ def _self_contained(question):
     """질문에 확정 지역과 기간이 모두 있고 이전 대화를 가리키지 않으면 True ('서울 2026년 8월 가격')."""
     if REFERS_BACK.search(question):
         return False
+    if re.search(r'(?<!\d)\d{1,2}\s*월', question) and not explicit_years(resolve_relative_years(question)):
+        return False  # '6월치 전부'처럼 연도 없는 월은 직전 대화의 연도를 이어받아야 함
     corpus = load_corpus()
     frame = parse_question(question, region_catalog(corpus), corpus.months)
     return bool(frame.targets) and not frame.ambiguous and frame.period.explicit
@@ -886,10 +935,12 @@ def _converse(question, history=None, **kwargs):
         candidates = str(error).split('입력해주세요.', 1)[-1].strip() if AMBIGUOUS_REGION in str(error) else ''
         if candidates:
             # 같은 이름의 지역은 오류 대신 확인 질문으로 돌려주고, 다음 대답을 대화 메모리로 연결합니다.
+            name = re.search(r"지역 '(.+?)'", str(error))
             result = {'answer': '같은 이름의 지역이 여러 곳 있습니다. 어느 지역인지 시도와 함께 알려주세요.'
                                 + f'\n후보: {candidates}',
                       'analysis': {'intent': 'clarify', 'reason': 'ambiguous_region'},
-                      'contexts': [], 'facts': [], 'sources': []}
+                      'contexts': [], 'facts': [], 'sources': [],
+                      'choices': _candidate_choices(standalone, name and name[1], candidates.split('; '))}
         else:
             error.standalone_question = standalone
             raise
