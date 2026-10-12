@@ -1,5 +1,8 @@
 """웹 응답 변환. 자격증명과 서버 경로는 브라우저에 전달하지 않습니다."""
-from collections import defaultdict
+import os
+import time
+from collections import defaultdict, deque
+from threading import Lock
 
 from bubot.answer_format import source_note, unify_units
 from bubot.config import DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, PROJECT_NAME
@@ -7,6 +10,38 @@ from bubot.conversation import MEMORY, chat
 from bubot.source_display import SOURCE_LABEL
 
 _coverage_notes = {}  # 원본 해시 → 결측 안내 문구 (페이지를 열 때마다 4만여 개 문서를 다시 훑지 않도록)
+
+# 질문 빈도 제한 (API 비용 보호). 대화 하나와 서버 전체의 최근 1분 질문 수를 셉니다. 0이면 제한 없음.
+# 대화별 기본값은 다른 챗봇 빌더(2026-10 확인: ChatLab 권장 150초 40개 ≈ 1분 16개, Chatling 예시 1분 10개,
+# 평균 약 13개)보다 살짝 낮게 1분 10개입니다. 서버 전체 값은 동시 처리 4건 × 질문당 약 4초의 처리 용량 기준입니다.
+SESSION_PER_MINUTE = int(os.getenv("BUBOT_SESSION_PER_MINUTE", "10"))
+GLOBAL_PER_MINUTE = int(os.getenv("BUBOT_GLOBAL_PER_MINUTE", "60"))
+_recent = {}            # 세션 ID → 최근 질문 시각 목록
+_recent_all = deque()   # 서버 전체 최근 질문 시각
+_recent_lock = Lock()
+
+
+class RateLimited(Exception):
+    """짧은 시간에 질문이 너무 많음 (HTTP 429)."""
+
+
+def check_rate(payload, now=None):
+    """최근 1분 질문 수가 한도를 넘으면 RateLimited. 통과하면 이번 질문을 셉니다."""
+    now = time.monotonic() if now is None else now
+    session = payload.get("session_id") if isinstance(payload, dict) else None
+    with _recent_lock:
+        for stamps in (_recent_all, *_recent.values()):
+            while stamps and now - stamps[0] > 60:
+                stamps.popleft()
+        for key in [k for k, v in _recent.items() if not v]:
+            del _recent[key]
+        mine = _recent.setdefault(str(session), deque())
+        if SESSION_PER_MINUTE and len(mine) >= SESSION_PER_MINUTE:
+            raise RateLimited(f"질문이 너무 빠르게 이어지고 있어요. 1분에 {SESSION_PER_MINUTE}개까지 질문할 수 있으니 잠시 후 다시 시도해 주세요.")
+        if GLOBAL_PER_MINUTE and len(_recent_all) >= GLOBAL_PER_MINUTE:
+            raise RateLimited("지금 질문하는 사람이 많아요. 잠시 후 다시 시도해 주세요.")
+        mine.append(now)
+        _recent_all.append(now)
 
 
 def route_of(result):
@@ -91,6 +126,11 @@ def status():
     from bubot.rag_service import open_index
     info = {"project": PROJECT_NAME, "source": SOURCE_LABEL, "memory_turns": MEMORY.turns,
             "key_ready": bool(check_configuration()["키 인식"])}
+    try:
+        from bubot.usage import totals
+        info["usage"] = totals()  # 오늘·이번 달 추정 API 비용과 한도 (USD)
+    except Exception:
+        pass
     try:
         corpus = load_corpus()
         info.update(period=f"{corpus.months[0]} ~ {corpus.months[-1]}", coverage_note=coverage_note(corpus))

@@ -50,7 +50,7 @@ function renderTurn(record) {
   else turn.append(error ? message('error', error) : message('assistant', answer, data || {}));
   if (note) turn.append(message('error', note));
   if (warning) turn.append(message('error', warning));
-  if (!pending && !error) turn.append(answerActions(record));
+  if (!pending && !error) turn.append(...answerBars(record));
 }
 
 // ── 질문·답변 복사와 다시 질문 ─────────────────────────────
@@ -84,6 +84,28 @@ function questionActions(question, unit) {
     send(question, unit);
   }));
   return bar;
+}
+// 답변 아래: 서버가 준 선택지(하위 지역 함께 보기, 같은 이름 지역 후보 등). 누르면 그 질문을 바로 보냅니다.
+function choiceButtons(record) {
+  const choices = record.data?.choices || [];
+  if (!choices.length) return null;
+  const bar = document.createElement('div');
+  bar.className = 'turn-actions answer-choices';
+  bar.setAttribute('role', 'group');
+  bar.setAttribute('aria-label', '이어서 볼 내용 선택');
+  for (const choice of choices) {
+    const button = actionButton('→', choice.label, () => {
+      if (pendingRequest) return;
+      send(choice.question, record.unit || '');
+    });
+    button.classList.add('choice');
+    button.title = choice.question;
+    bar.append(button);
+  }
+  return bar;
+}
+function answerBars(record) {
+  return [choiceButtons(record), answerActions(record)].filter(Boolean);
 }
 // 답변 아래: 답변 복사
 function answerActions(record) {
@@ -142,7 +164,7 @@ async function send(question, unit) {
     feedback.textContent = '답변을 불러오지 못했어요. 위 안내를 확인하고 다시 시도해 주세요.';
   } finally {
     if (leaving) return;  // eslint-disable-line no-unsafe-finally
-    if (!record.error) turn.append(answerActions(record));
+    if (!record.error) turn.append(...answerBars(record));
     delete record.pending;
     delete record.at;
     commit(turns => {

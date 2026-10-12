@@ -13,6 +13,9 @@ KEY_ATTRIBUTE = "open_Aikey"
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 1536
 CHAT_MODEL = "gpt-4o-mini"
+# 단계별 고정 키. 같은 키의 요청을 같은 캐시 서버로 보내 고정 프롬프트(질문 분석 약 5,100토큰)가 캐시 적중합니다.
+# 측정(2026-10-12): 키 없음 6회 중 1회 적중 → 키 지정 시 첫 호출 이후 매번 적중.
+PROMPT_CACHE_KEYS = {"analyze": "bubot-analyze", "condense": "bubot-condense", "answer": "bubot-answer"}
 LOCATE_MODEL = "gpt-4o"  # 장소 → 소재지 확인 전용 (locate_place 참고)
 API_BASE_URL = "https://api.openai.com/v1"
 API_MIN_INTERVAL = float(os.getenv("BUBOT_API_MIN_INTERVAL", "0.3"))  # 모든 OpenAI 호출 사이 최소 간격(초)
@@ -194,6 +197,7 @@ argmax/argmin의 region_names는 검색 범위 하나 이하, 기본 level은 �
     payload = {"available_months":months, "regions":[r['label'] for r in catalog.values()],
                "today":_today(), "latest_month":months[-1], "question":question}
     response = _metered(shared_client().responses.parse, model=CHAT_MODEL, store=False, temperature=0,
+        prompt_cache_key=PROMPT_CACHE_KEYS["analyze"],
         input=[{"role":"system", "content":instruction},
                {"role":"user", "content":json.dumps(payload,ensure_ascii=False)}],
         text_format=Analysis, max_output_tokens=1200)
@@ -257,6 +261,7 @@ history는 같은 사용자와의 최근 대화입니다(오래된 것부터). �
              for t in history]
     payload = {"history": turns, "question": question}
     response = _metered(shared_client().responses.parse, model=CHAT_MODEL, store=False, temperature=0,
+        prompt_cache_key=PROMPT_CACHE_KEYS["condense"],
         input=[{"role":"system", "content":instruction},
                {"role":"user", "content":json.dumps(payload, ensure_ascii=False)}],
         text_format=Condensed, max_output_tokens=400)
@@ -316,6 +321,7 @@ today는 실제 오늘 날짜입니다. 당신의 학습 시점을 현재로 가
     if correction:
         payload["correction"] = list(correction)
     response = _metered(shared_client().responses.create, model=CHAT_MODEL, store=False, temperature=0,
+        prompt_cache_key=PROMPT_CACHE_KEYS["answer"],
         input=[{"role":"system","content":prompt},
                {"role":"user","content":json.dumps(payload,ensure_ascii=False)}],
         max_output_tokens=2500)
