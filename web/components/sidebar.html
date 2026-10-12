@@ -3,9 +3,21 @@
   <p class="brand-caption">우리 동네의 가격을 읽다</p>
   <nav class="main-nav" aria-label="주요 메뉴">
     <a {{home_nav}} href="/"><span aria-hidden="true">⌂</span> 가격 알아보기</a>
+    <div class="nav-row" id="chat-row" hidden>
+      <a {{chat_nav}} href="/chat.html" id="chat-link"><span aria-hidden="true">◎</span> <span id="chat-title" class="nav-title">진행 중인 대화</span><b id="chat-count" class="nav-badge" hidden></b></a>
+      <button type="button" class="nav-menu-button" id="chat-menu-button" aria-haspopup="menu" aria-expanded="false" aria-controls="chat-menu" aria-label="대화 메뉴" title="대화 메뉴"><span aria-hidden="true">☰</span></button>
+      <div class="nav-menu" id="chat-menu" role="menu" aria-label="대화 메뉴" hidden>
+        <button type="button" role="menuitem" data-action="pdf"><span aria-hidden="true">⎙</span><span class="menu-label">PDF로 저장·공유</span></button>
+        <button type="button" role="menuitem" data-action="copy"><span aria-hidden="true">⧉</span><span class="menu-label">대화 전체 복사</span></button>
+        <button type="button" role="menuitem" data-action="close" class="danger"><span aria-hidden="true">✕</span><span class="menu-label">대화 닫기</span></button>
+      </div>
+    </div>
+  </nav>
+  <figure class="aside-illustration"><img src="/assets/illustrations/apartment-icon.svg" width="160" height="160" alt="아파트 건물 아이콘"></figure>
+  <nav class="main-nav sub-nav" aria-label="기록과 안내">
+    <p class="nav-caption">기록과 안내</p>
     <a {{history_nav}} href="/history"><span aria-hidden="true">◷</span> 지난 질문</a>
     <a {{data_nav}} href="/data.html" id="data-link"><span aria-hidden="true">ⓘ</span> 데이터 안내</a>
   </nav>
-  <figure class="aside-illustration"><img src="/assets/illustrations/apartment-icon.svg" width="160" height="160" alt="아파트 건물 아이콘"></figure>
   <div class="aside-foot"><div id="status" role="status">공공데이터 기반 조회</div><span>공공데이터로 살펴보는 아파트 가격</span></div>
 </aside>

@@ -22,3 +22,12 @@ class Condensed(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
     is_followup: bool
     standalone_question: str
+
+
+class Location(BaseModel):
+    """질문 속 장소(경기장·역·시설·생활권)의 소재지. address는 '시도 시군구 [구]' 행정구역 주소."""
+    model_config = ConfigDict(extra='forbid', strict=True)
+    found: bool
+    place: str
+    address: str
+    candidates: list[str]

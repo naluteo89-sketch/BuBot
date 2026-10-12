@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from pydantic import ValidationError
-from rag_fixtures import fake_embed, knowledge_collection
+from rag_fixtures import NOT_LOCATED, fake_embed, knowledge_collection
 
 from bubot.answer_check import number_issues
 from bubot.coverage import explicit_years, year_coverage
@@ -32,6 +32,7 @@ class Base(unittest.TestCase):
              patch('gpt_api.analyze_query', return_value=parsed or analysis()) as analyze, \
              patch('gpt_api.embed_texts', side_effect=fake_embed), \
              patch('gpt_api.generate_answer', generate), \
+             patch('gpt_api.locate_place', return_value=NOT_LOCATED), \
              patch('bubot.year_query._this_year', return_value=2026):
             result = ask(question, **options)
         return result, analyze, generate

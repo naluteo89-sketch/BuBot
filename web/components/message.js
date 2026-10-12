@@ -55,13 +55,19 @@ function factItem(line) {
 }
 
 // 답변 형식(요약 문단 → '- ' 근거 목록 → 보충 문단)을 위계가 보이는 문서로 바꿉니다.
-function richBody(text) {
+// 답변 속 '- ' 목록이 '계산 근거'와 같은 내용이고 짧으면(5줄 이하) 본문에서 뺍니다. 순위처럼 긴 목록은 남깁니다.
+const SHORT_LIST = 5;
+const sameAsFacts = (lines, facts) => facts.length > 0 && lines.length <= SHORT_LIST
+  && lines.every(line => facts.includes(line.slice(2).trim()));
+
+function richBody(text, facts = []) {
   const body = document.createElement('div');
   body.className = 'message-body rich';
   const paragraphs = text.trim().split(/\n\s*\n/).filter(Boolean);
   paragraphs.forEach((paragraph, index) => {
     const lines = paragraph.split('\n').map(line => line.trim()).filter(Boolean);
     if (lines.length && lines.every(line => line.startsWith('- '))) {
+      if (sameAsFacts(lines, facts)) return;
       const list = document.createElement('ul');
       list.className = 'facts';
       lines.forEach(line => list.append(factItem(line.slice(2))));
@@ -116,7 +122,7 @@ export function message(role, text, data = {}) {
     const at = text.indexOf(WARNING_MARK);
     const main = at >= 0 ? text.slice(0, at) : text;
     if (at >= 0) notice = checkNotice(text.slice(at));
-    card.append(richBody(main));
+    card.append(richBody(main, (data.facts || []).map(fact => String(fact).trim())));
   } else {
     const body = document.createElement('div');
     body.className = 'message-body';
@@ -129,6 +135,13 @@ export function message(role, text, data = {}) {
     note.className = 'message-route';
     note.textContent = '같은 질문에 대한 이전 답변을 그대로 보여드려요.';
     card.append(note);
+  }
+  // 답변마다 같은 형식의 한 줄 출처 (서버 source_note). 자세한 행·해시는 아래 '계산 근거와 출처 확인'에 있습니다.
+  if (role === 'assistant' && data.source_note) {
+    const source = document.createElement('p');
+    source.className = 'source-note';
+    source.textContent = data.source_note;
+    card.append(source);
   }
   if (data.facts?.length || data.sources?.length) {
     const extra = document.createElement('details');
