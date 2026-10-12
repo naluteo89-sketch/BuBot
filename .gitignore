@@ -6,3 +6,4 @@ archive/
 .env
 gpt_key.py
 테스트기록/
+data/

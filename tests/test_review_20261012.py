@@ -204,6 +204,13 @@ class ConsistencyAndFallbackTests(unittest.TestCase):
         sleep.assert_called_once()
         self.assertAlmostEqual(sleep.call_args.args[0], 0.2)
 
+    def test_time_notes_are_not_added_to_out_of_scope_answers(self):
+        from bubot.rag_service import _with_notes
+        off = {'answer': '범위 밖입니다.', 'analysis': {'intent': 'clarify'}}
+        self.assertEqual(_with_notes(off, ['오늘 → 2026-08'])['answer'], '범위 밖입니다.')
+        normal = {'answer': '답', 'analysis': {'intent': 'lookup'}}
+        self.assertIn('※ 오늘 → 2026-08', _with_notes(normal, ['오늘 → 2026-08'])['answer'])
+
     def test_web_shows_guidance_as_answer(self):
         from bubot.web import service
         with patch('bubot.web.service.chat', side_effect=ValueError('조회할 지역명을 입력해주세요.')):

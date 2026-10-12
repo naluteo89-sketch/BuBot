@@ -1,6 +1,8 @@
 """외부 의존성 없는 로컬 전용 HTTP 서버. 정적 파일은 web 폴더만 제공합니다."""
 import argparse
+import ipaddress
 import json
+import socket
 import mimetypes
 import sys
 import time
@@ -15,6 +17,33 @@ from .layout import render_layout
 ROOT = Path(__file__).resolve().parents[2] / "web"
 BUSY = Lock()
 CSP = "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+
+
+def lan_host(host, port):
+    """--lan 모드에서 허용할 Host: 같은 포트의 사설 IPv4 주소(192.168.x.x·10.x.x.x·172.16~31.x.x)만."""
+    name, _, host_port = host.rpartition(":")
+    try:
+        address = ipaddress.ip_address(name)
+    except ValueError:
+        return False  # 도메인 이름은 허용하지 않습니다 (DNS 재바인딩 방지)
+    return (host_port == str(port) and address.version == 4 and address.is_private
+            and not address.is_loopback and not address.is_link_local)
+
+
+def lan_addresses():
+    """같은 와이파이의 휴대폰에서 입력할 PC 주소 후보."""
+    found = set()
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("192.168.0.1", 9))  # 실제 전송 없이 기본 경로의 내 주소만 확인
+            found.add(probe.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        found.update(info[4][0] for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET))
+    except OSError:
+        pass
+    return sorted(a for a in found if lan_host(f"{a}:1", 1))
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
@@ -34,9 +63,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def trusted(self):
         host = self.headers.get("Host", "")
-        allowed = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
+        port = self.server.server_port
+        allowed = {f"127.0.0.1:{port}", f"localhost:{port}"}
         origin = self.headers.get("Origin")
-        return host in allowed and (not origin or origin == f"http://{host}")
+        ok = host in allowed or (getattr(self.server, "allow_lan", False) and lan_host(host, port))
+        return ok and (not origin or origin == f"http://{host}")
 
     def do_GET(self):
         if not self.trusted():
@@ -118,9 +149,19 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description="BuBot 로컬 테스트 웹페이지")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--lan", action="store_true",
+                        help="같은 와이파이의 휴대폰 등에서 접속 허용 (사설 IP 주소로만, 테스트용)")
     args = parser.parse_args()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    server = ThreadingHTTPServer(("0.0.0.0" if args.lan else "127.0.0.1", args.port), Handler)
+    server.allow_lan = args.lan
     print(f"BuBot: http://127.0.0.1:{args.port} (종료: Ctrl+C)", flush=True)
+    if args.lan:
+        addresses = lan_addresses()
+        for address in addresses:
+            print(f"  같은 와이파이 기기: http://{address}:{args.port}", flush=True)
+        if not addresses:
+            print("  PC의 사설 IP를 찾지 못했습니다. ipconfig의 IPv4 주소를 확인하세요.", flush=True)
+        print("  처음 실행 시 Windows 방화벽 창이 뜨면 '개인 네트워크' 허용을 선택하세요.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

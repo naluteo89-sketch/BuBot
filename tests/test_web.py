@@ -129,6 +129,28 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(connection.getresponse().status, 403)
         connection.close()
 
+    def test_lan_host_only_with_lan_option(self):
+        port = self.httpd.server_port
+
+        def status(host, origin=None):
+            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=10)
+            headers = {'Host': host, **({'Origin': origin} if origin else {})}
+            connection.request('GET', '/', headers=headers)
+            code = connection.getresponse().status
+            connection.close()
+            return code
+
+        self.assertEqual(status(f'192.168.0.10:{port}'), 403)  # 기본값: PC 자신만 허용
+        self.httpd.allow_lan = True
+        try:
+            self.assertEqual(status(f'192.168.0.10:{port}'), 200)
+            self.assertEqual(status(f'10.0.0.5:{port}', f'http://10.0.0.5:{port}'), 200)
+            self.assertEqual(status(f'192.168.0.10:{port}', 'http://evil.example'), 403)
+            self.assertEqual(status(f'evil.example:{port}'), 403)  # 도메인 이름 거부
+            self.assertEqual(status(f'8.8.8.8:{port}'), 403)  # 공인 IP 거부
+        finally:
+            self.httpd.allow_lan = False
+
 
 if __name__ == '__main__':
     unittest.main()
