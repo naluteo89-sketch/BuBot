@@ -1,0 +1,11 @@
+﻿{
+  "id": "eece40e6ea514bdf984cb7bddd1b9510",
+  "created_at": "2026-10-08T11:09:59.194388+09:00",
+  "question": "전남광주 북구8개월간 가격",
+  "unit": "",
+  "status": "error",
+  "elapsed_seconds": 1.741,
+  "result": {
+    "error": "요청 기간의 데이터가 없거나 순서가 잘못되었습니다. 2025-11 ~ 2026-08"
+  }
+}

@@ -1,0 +1,25 @@
+﻿{
+  "id": "7d62474a436447feba0b7fde8f9767b8",
+  "created_at": "2026-10-08T16:18:30.664345+09:00",
+  "question": "아니 그 지역 거래 금액",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 3.308,
+  "result": {
+    "answer": "지역과 기간을 명시해주세요.",
+    "facts": [],
+    "sources": [],
+    "standalone_question": "그 지역의 아파트 거래 금액은 얼마인가요?",
+    "followup": true,
+    "input_converted": false,
+    "memory_turns": 3,
+    "memory_used": 3,
+    "timings": {
+      "질문재구성": 1.671,
+      "질문분석": 1.619
+    },
+    "route": "clarify",
+    "retrieved": [],
+    "elapsed_seconds": 3.308
+  }
+}

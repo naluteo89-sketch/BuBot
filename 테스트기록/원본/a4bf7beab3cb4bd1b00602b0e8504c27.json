@@ -1,0 +1,323 @@
+﻿{
+  "id": "a4bf7beab3cb4bd1b00602b0e8504c27",
+  "created_at": "2026-10-08T16:55:04.040095+09:00",
+  "question": "[대화 재검증] tjdnf wldur 25sus rjfo epdlxj",
+  "unit": null,
+  "status": "success",
+  "elapsed_seconds": 0.01,
+  "result": {
+    "answer": "서울 2025-01 ~ 2025-12의 월평균 매매가격을 단순 평균하면 12억 737만 5,583원입니다. 요청 12개월 중 유효값 12개월을 사용했습니다. 12월 한 달의 값이 아니며, 거래 건수로 가중한 실거래 평균도 아닙니다.",
+    "facts": [
+      "2025-01: 11억 2,746만 6,000원",
+      "2025-02: 11억 3,344만 9,000원",
+      "2025-03: 11억 5,110만 1,000원",
+      "2025-04: 11억 6,633만 7,000원",
+      "2025-05: 11억 7,718만 7,000원",
+      "2025-06: 12억 554만 7,000원",
+      "2025-07: 12억 2,449만 8,000원",
+      "2025-08: 12억 3,236만 1,000원",
+      "2025-09: 12억 4,148만 9,000원",
+      "2025-10: 12억 6,373만 7,000원",
+      "2025-11: 12억 7,590만 9,000원",
+      "2025-12: 12억 8,942만 6,000원",
+      "월평균 가격 합계 144억 8,850만 7,000원 ÷ 12개월 = 12억 737만 5,583원 (원 단위 반올림)"
+    ],
+    "contexts": [
+      {
+        "id": "region-8-month-2025-01",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-01\n가격: 1,127,466천원 (11억 2,746만 6,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1127466.0,
+          "kind": "monthly",
+          "month": "2025-01",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-02",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-02\n가격: 1,133,449천원 (11억 3,344만 9,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1133449.0,
+          "kind": "monthly",
+          "month": "2025-02",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-03",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-03\n가격: 1,151,101천원 (11억 5,110만 1,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1151101.0,
+          "kind": "monthly",
+          "month": "2025-03",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-04",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-04\n가격: 1,166,337천원 (11억 6,633만 7,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1166337.0,
+          "kind": "monthly",
+          "month": "2025-04",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-05",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-05\n가격: 1,177,187천원 (11억 7,718만 7,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1177187.0,
+          "kind": "monthly",
+          "month": "2025-05",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-06",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-06\n가격: 1,205,547천원 (12억 554만 7,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1205547.0,
+          "kind": "monthly",
+          "month": "2025-06",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-07",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-07\n가격: 1,224,498천원 (12억 2,449만 8,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1224498.0,
+          "kind": "monthly",
+          "month": "2025-07",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-08",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-08\n가격: 1,232,361천원 (12억 3,236만 1,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1232361.0,
+          "kind": "monthly",
+          "month": "2025-08",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-09",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-09\n가격: 1,241,489천원 (12억 4,148만 9,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1241489.0,
+          "kind": "monthly",
+          "month": "2025-09",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-10",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-10\n가격: 1,263,737천원 (12억 6,373만 7,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1263737.0,
+          "kind": "monthly",
+          "month": "2025-10",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-11",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-11\n가격: 1,275,909천원 (12억 7,590만 9,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1275909.0,
+          "kind": "monthly",
+          "month": "2025-11",
+          "missing": false
+        }
+      },
+      {
+        "id": "region-8-month-2025-12",
+        "text": "아파트 평균매매가격\n지역: 서울\n기준 월: 2025-12\n가격: 1,289,426천원 (12억 8,942만 6,000원)\n출처: new_prices.csv (행 번호: 11)",
+        "metadata": {
+          "source": "new_prices.csv",
+          "source_sha256": "b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+          "source_row": 11,
+          "region_id": "8",
+          "region_path": "서울",
+          "region_name": "서울",
+          "unit": "천원",
+          "document_version": "apartment-v2",
+          "region_1": "서울",
+          "region_2": "서울",
+          "region_3": "서울",
+          "region_4": "서울",
+          "price_thousand_krw": 1289426.0,
+          "kind": "monthly",
+          "month": "2025-12",
+          "missing": false
+        }
+      }
+    ],
+    "sources": [
+      "[region-8-month-2025-01] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-01 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-02] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-02 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-03] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-03 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-04] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-04 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-05] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-05 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-06] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-06 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-07] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-07 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-08] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-08 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-09] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-09 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-10] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-10 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-11] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-11 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716",
+      "[region-8-month-2025-12] 공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매 · 서울 · 2025-12 · 원본 11행 · SHA-256 b9d75951182fe5738352c6056efcb177bbbae2bc4a74e6baff528c01c1e93716"
+    ],
+    "analysis": {
+      "intent": "period_mean",
+      "resolved_region_ids": [
+        "8"
+      ],
+      "resolved_start": "2025-01",
+      "resolved_end": "2025-12",
+      "mean_thousand": "1207375.583333333333333333333",
+      "valid_months": 12
+    },
+    "route": "rule",
+    "standalone_question": "서울 지역 25년 거래 데이터",
+    "followup": false,
+    "input_converted": true,
+    "timings": {},
+    "memory_turns": 3,
+    "memory_used": 2
+  }
+}

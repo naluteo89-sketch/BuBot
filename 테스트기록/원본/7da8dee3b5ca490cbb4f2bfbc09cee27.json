@@ -1,0 +1,12 @@
+﻿{
+  "id": "7da8dee3b5ca490cbb4f2bfbc09cee27",
+  "created_at": "2026-10-08T16:11:44.970278+09:00",
+  "question": "변동율이 감소한 지역",
+  "unit": "",
+  "status": "error",
+  "elapsed_seconds": 4.787,
+  "result": {
+    "error": "한 번에 5개 지역까지 조회하세요.",
+    "elapsed_seconds": 4.787
+  }
+}

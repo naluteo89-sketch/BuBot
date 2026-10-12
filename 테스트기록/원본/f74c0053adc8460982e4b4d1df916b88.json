@@ -1,0 +1,24 @@
+﻿{
+  "id": "f74c0053adc8460982e4b4d1df916b88",
+  "created_at": "2026-10-08T17:31:51.934493+09:00",
+  "question": "이전에 내가 한 질문",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 0.956,
+  "result": {
+    "answer": "광주광역시와 경기도 광주시 중 어느 지역을 말씀하시나요? 지역을 포함한 질문으로 다시 입력해 주세요. 예: “광주광역시 2026년 8월 평균매매가격” 또는 “경기도 광주시 2026년 8월 평균매매가격”.",
+    "facts": [],
+    "sources": [],
+    "standalone_question": "전남광주 / 광주 / 북구 이전에 내가 한 질문은 무엇인가요?",
+    "followup": true,
+    "input_converted": false,
+    "memory_turns": 3,
+    "memory_used": 3,
+    "timings": {
+      "질문재구성": 0.937
+    },
+    "route": "clarify",
+    "retrieved": [],
+    "elapsed_seconds": 0.956
+  }
+}

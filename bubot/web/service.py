@@ -1,0 +1,91 @@
+"""웹 응답 변환. 자격증명과 서버 경로는 브라우저에 전달하지 않습니다."""
+from collections import defaultdict
+
+from bubot.config import DISPLAY_PRICE_UNITS, PROJECT_NAME
+from bubot.conversation import MEMORY, chat
+from bubot.source_display import SOURCE_LABEL
+
+_coverage_notes = {}  # 원본 해시 → 결측 안내 문구 (페이지를 열 때마다 4만여 개 문서를 다시 훑지 않도록)
+
+
+def route_of(result):
+    """규칙 기반 선처리와 확인 질문은 rag_service가 route를 붙이지 않으므로 화면용 이름을 정합니다."""
+    if result.get("route"):
+        return result["route"]
+    return "clarify" if (result.get("analysis") or {}).get("intent") == "clarify" else "rule"
+
+
+def answer(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("JSON 객체가 필요합니다.")
+    question = payload.get("question")
+    unit = payload.get("unit") or None
+    if not isinstance(question, str) or not 1 <= len(question.strip()) <= 1000:
+        raise ValueError("질문을 1~1000자로 입력하세요.")
+    if unit is not None and unit not in DISPLAY_PRICE_UNITS:
+        raise ValueError("지원하지 않는 가격 단위입니다.")
+    session_id = MEMORY.check(payload.get("session_id"))
+    result = chat(session_id, question.strip(), unit=unit)
+    response = {key: result.get(key, default) for key, default in
+                (("answer", ""), ("facts", []), ("sources", []),
+                 ("standalone_question", ""), ("followup", False), ("input_converted", False),
+                 ("memory_turns", 0), ("memory_used", 0), ("timings", {}))}
+    response["route"] = route_of(result)
+    retrieval = (result.get("analysis") or {}).get("retrieval") or {}
+    response["retrieved"] = [f"{doc_id} ({pool}, 거리 {distance})" for doc_id, pool, distance in retrieval.get("used", [])]
+    return response
+
+def reset(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("JSON 객체가 필요합니다.")
+    MEMORY.reset(MEMORY.check(payload.get("session_id")))
+    return {"reset": True}
+
+
+def coverage_note(corpus):
+    """결측이 있는 지역 수와, 값이 있는 기간이 가장 짧은 지역 묶음을 원본에서 계산해 안내합니다."""
+    if corpus.source_hash in _coverage_notes:
+        return _coverage_notes[corpus.source_hash]
+    months, names = defaultdict(list), {}
+    for d in corpus.documents:
+        m = d.metadata
+        if m["kind"] == "monthly":
+            names[m["region_id"]] = m["region_path"]
+            if not m["missing"]:
+                months[m["region_id"]].append(m["month"])
+    partial = [rid for rid in names if len(months[rid]) < len(corpus.months)]
+    note = "모든 지역에 전체 기간 값이 있습니다."
+    if partial:
+        note = f"{len(names)}개 지역 중 {len(partial)}곳은 신설·폐지·개편으로 일부 월 값이 없습니다."
+        groups = defaultdict(list)
+        for rid in partial:
+            if months[rid]:
+                groups[(len(months[rid]), min(months[rid]), max(months[rid]))].append(names[rid])
+        if groups:
+            (count, start, end), regions = min(groups.items())
+            more = " 등" if len(regions) > 3 else ""
+            note += f" 예: {', '.join(regions[:3])}{more} {len(regions)}곳은 {start} ~ {end}({count}개월)만 있습니다."
+    _coverage_notes.clear()
+    _coverage_notes[corpus.source_hash] = note
+    return note
+
+
+def status():
+    from gpt_api import check_configuration
+    from bubot.data_cache import load_corpus
+    from bubot.rag_service import open_index
+    info = {"project": PROJECT_NAME, "source": SOURCE_LABEL, "memory_turns": MEMORY.turns,
+            "key_ready": bool(check_configuration()["키 인식"])}
+    try:
+        corpus = load_corpus()
+        info.update(period=f"{corpus.months[0]} ~ {corpus.months[-1]}", coverage_note=coverage_note(corpus))
+    except Exception:
+        info.update(period="원본 데이터 점검 필요", coverage_note="")
+    try:
+        open_index()
+        info["index_ready"] = True
+    except ValueError as error:
+        info.update(index_ready=False, index_message=str(error))
+    except Exception:
+        info["index_ready"] = False
+    return info

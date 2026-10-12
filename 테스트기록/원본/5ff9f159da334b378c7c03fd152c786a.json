@@ -1,0 +1,22 @@
+﻿{
+  "id": "5ff9f159da334b378c7c03fd152c786a",
+  "created_at": "2026-10-08T16:27:31.103763+09:00",
+  "question": "4년간 데이터 중 변동율이 음수로 가는 지역",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 0.188,
+  "result": {
+    "answer": "네. 변동률은 비교 기준보다 가격이 내려가면 음수가 됩니다. 변동률 = (현재 가격 − 기준 가격) ÷ 기준 가격 × 100입니다. 예를 들어 1억원에서 9천만원으로 내려가면 -10%입니다. 특정 지역·월의 변동률이 양수인 것과 음수가 될 수 있는지는 별개의 질문입니다. 기준 가격이 0이면 이 식으로 변동률을 계산할 수 없습니다.",
+    "facts": [],
+    "sources": [],
+    "standalone_question": "4년간 데이터 중 변동율이 음수로 가는 지역",
+    "followup": false,
+    "input_converted": false,
+    "memory_turns": 1,
+    "memory_used": 0,
+    "timings": {},
+    "route": "rule",
+    "retrieved": [],
+    "elapsed_seconds": 0.188
+  }
+}

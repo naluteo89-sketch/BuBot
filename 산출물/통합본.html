@@ -1,0 +1,2589 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BuBot 팀 산출물</title><style>*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eef2f6;color:#17283b;font:16px/1.75 "Malgun Gothic",sans-serif}aside{position:fixed;inset:0 auto 0 0;width:260px;background:#152d46;color:white;padding:28px 20px;overflow:auto}aside h2{font-size:26px;margin:0}aside small{color:#b4ccdf}aside a{display:block;color:#dfebf5;text-decoration:none;font-size:13px;padding:8px 0;border-bottom:1px solid #ffffff18}input{width:100%;padding:10px;margin:20px 0;border:0;border-radius:5px}main{margin-left:260px;padding:36px;max-width:1500px}header,section{background:white;padding:36px 40px;margin-bottom:24px;border:1px solid #dbe3eb;border-radius:10px}header{border-top:6px solid #167e91}h1{font-size:30px;line-height:1.35;margin-top:10px}h2{font-size:21px;margin-top:30px;color:#15687b}h3{font-size:18px}p{max-width:100ch}table{width:100%;border-collapse:collapse;font-size:13px;margin:18px 0;table-layout:auto}th{background:#e8f1f6;text-align:left}td,th{padding:10px;border:1px solid #d3dfe8;overflow-wrap:anywhere;vertical-align:top}pre{background:#f1f5f8;padding:18px;overflow:auto;font:13px/1.65 Consolas,"Malgun Gothic",monospace;white-space:pre-wrap;overflow-wrap:anywhere}code{font-family:Consolas,"Malgun Gothic",monospace;overflow-wrap:anywhere}.meta{color:#6a7e90;font-size:12px}button{padding:9px 18px;background:#167e91;color:white;border:0;border-radius:5px;cursor:pointer}a{color:#12677b}@media(max-width:900px){aside{position:static;width:auto}main{margin:0;padding:12px}section,header{padding:20px}table{font-size:12px}}@media print{aside,button{display:none}main{margin:0;padding:0}section,header{border:0;padding:10px;break-before:page}table{font-size:10px}tr{break-inside:avoid}body{background:white}a{color:inherit}}</style><aside><h2>BuBot</h2><small>분석 · 설계 · 구현 · 시험</small><input id="q" aria-label="문서 검색" placeholder="문서 내용 검색"><nav><a href="#doc-0">BuBot 팀 발표 요약</a><a href="#doc-1">BuBot 산출물 안내</a><a href="#doc-2">요구사항 추적표</a><a href="#doc-3">문서 유지보수 가이드</a><a href="#doc-4">사용자 요구사항 정의서</a><a href="#doc-5">인터페이스와 데이터 설계서</a><a href="#doc-6">컴포넌트 설계서</a><a href="#doc-7">클래스 설계서</a><a href="#doc-8">실제 클래스 자동 목록</a><a href="#doc-9">구현 명세서</a><a href="#doc-10">주요 모듈 함수 자동 목록</a><a href="#doc-11">시험 결과서</a><a href="#doc-12">시험 계획서</a><a href="#doc-13">자동시험 목록</a><a href="#doc-14">테스트 케이스 명세서</a><a href="#doc-15">공통 산출물 작성 양식</a></nav></aside><main><header><div class="meta">TEAM DOCUMENTATION · v1.0</div><h1>부동산 평균 매매가 조회 AI</h1><p>공개 양식의 핵심 항목을 적용한 팀 내부 검토용 산출물입니다. 발표 요약부터 상세 설계와 시험 증적까지 순서대로 확인하세요.</p><p class="meta">기준일 2026-10-12 · 편집 원본 Markdown · 업무 승인 전 초안</p><button onclick="window.print()">인쇄 / PDF 저장</button></header><section id="doc-0"><div class="meta">05_발표/팀발표_요약.md</div><h1>BuBot 팀 발표 요약</h1>
+<p>문서 ID: PR-01 / 버전: 1.0 / 기준일: 2026-10-12 / 약 5분</p>
+<h2>어떤 문제를 해결하나요</h2>
+<p>“서울의 월평균 매매가격은 얼마인가”, “두 지역은 얼마나 차이가 나는가” 같은 질문을 자연어로 조회합니다. 표를 직접 찾는 과정을 줄이고 계산과 원본 출처를 함께 확인할 수 있게 하는 것이 목적입니다.</p>
+<h2>어떻게 답하나요</h2>
+<p>질문 → 지역·기간 확인 → 원본 계산 또는 지식 검색 → 답변 → 출처 표시 순서입니다. 숫자는 Python 코드가 계산하고 모델은 제공된 근거를 바탕으로 설명합니다. 모호한 지역은 다시 묻고 데이터가 없는 기간은 안내합니다.</p>
+<h2>현재 구현의 핵심</h2>
+<table>
+<thead>
+<tr>
+<th>기능</th>
+<th>발표에서 설명할 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>원본 데이터</td>
+<td>245개 지역, 176개월, 2012-01~2026-08</td>
+</tr>
+<tr>
+<td>계산</td>
+<td>가격·비교·추이·순위, 기간 평균과 하락 지역 조회</td>
+</tr>
+<tr>
+<td>설명 근거</td>
+<td>안내·지역 프로필·시장 요약 454개 지식 문서</td>
+</tr>
+<tr>
+<td>대화</td>
+<td>기본 최근 3턴 기억, 세션별 분리와 새 대화</td>
+</tr>
+<tr>
+<td>검증</td>
+<td>퍼센트 불일치 시 1회 재생성, 지속 시 경고</td>
+</tr>
+</tbody>
+</table>
+<h2>검증 결과와 남은 일</h2>
+<p>2026-10-12 자동시험 125건이 모두 통과했습니다. 실제 모델 답변의 현재 정답률은 이번 시험으로 측정하지 않았습니다. 질문 파서의 지역 탐지는 현재 연결되어 축약명과 모호성을 처리합니다. 전체 질문 프레임 통합은 추가 검토 대상입니다.</p>
+<p>다음 단계는 팀 요구사항 확인, 실제 API 시연 케이스 검증, 전체 질문 프레임 통합 여부 결정입니다.</p>
+<h2>시연 순서</h2>
+<ol>
+<li>“서울 2026년 8월 평균 매매가격”으로 값과 출처를 보여줍니다.</li>
+<li>“부산은?”으로 이전 기간이 이어지는지 확인합니다.</li>
+<li>“서울 2017년 평균 매매가격”으로 유효 월의 단순 평균을 설명합니다.</li>
+<li>“광주 2026년 8월 가격”으로 확인 질문을 보여줍니다.</li>
+</ol>
+<p>위 시나리오는 발표용 계획이며 이번 작업에서 실제 API 시연을 완료한 기록은 아닙니다. 현장 시연 전에 MAN 케이스로 결과를 남기세요.</p>
+</section><section id="doc-1"><div class="meta">00_안내/README.md</div><h1>BuBot 산출물 안내</h1>
+<p>부동산 평균 매매가 조회 AI 개발의 분석·설계·구현·시험 자료입니다. 팀 내부 약식 발표와 코드 변경 후 문서 유지보수를 목적으로 합니다. 현재 구현을 역으로 정리한 요구사항 초안이며, 회사의 승인된 요구사항을 대체하지 않습니다.</p>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기준일</td>
+<td>2026-10-12, Asia/Seoul</td>
+</tr>
+<tr>
+<td>문서 버전</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>작성</td>
+<td>코드 분석 기반 초안</td>
+</tr>
+<tr>
+<td>검토자와 승인</td>
+<td>팀 검토 시 기입 / 미승인</td>
+</tr>
+<tr>
+<td>코드 기준</td>
+<td>Git 이력 없음. 파일 SHA-256으로 기준 기록</td>
+</tr>
+</tbody>
+</table>
+<h2>읽는 순서</h2>
+<ol>
+<li><code>05_발표/팀발표_요약.md</code>: 5분 발표용 핵심 내용</li>
+<li><code>01_분석/사용자_요구사항_정의서.md</code>: 사용자 관점과 수용 기준</li>
+<li><code>02_설계/컴포넌트_설계서.md</code>, <code>클래스_설계서.md</code>: 구성과 책임</li>
+<li><code>03_구현/구현_명세서.md</code>: 현재 구현과 주요 설정</li>
+<li><code>04_시험/테스트_케이스.md</code>, <code>시험_결과서.md</code>: 시험 절차와 실행 결과</li>
+</ol>
+<p><code>발표용_통합본.html</code>을 브라우저로 열면 모든 문서를 목차와 함께 볼 수 있습니다. 검색과 인쇄를 지원하며 외부 통신 없이 열립니다. 문서는 Markdown 원본을 수정한 뒤 열람본을 다시 생성합니다. HTML을 직접 편집하면 재생성 시 사라집니다.</p>
+<h2>공개 양식 적용</h2>
+<p><a href="https://www.atlassian.com/software/confluence/templates/product-requirements">Atlassian 공개 요구사항 양식</a>의 목적·범위·요구사항·열린 질문 구성을 참고했습니다. <a href="https://support.testrail.com/hc/en-us/articles/14927678348052-Test-case-templates">TestRail 공개 테스트 케이스 양식</a>의 사전조건·절차·기대결과 구성을 적용했습니다. 확인일은 2026-10-12입니다. 양식의 항목 구성을 참고해 한국어 약식 문서로 새로 작성했으며 공식 양식 준수 인증을 의미하지 않습니다. 회사 비공개 양식이나 소스코드를 외부 사이트에 업로드하지 않았습니다.</p>
+<h2>수정과 재생성</h2>
+<p>프로젝트 루트 <code>C:\BuBot</code>에서 실행합니다.</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe 산출물\도구\refresh.py
+</code></pre>
+<p>이 명령은 파일 기준표·코드 목록·자동시험 목록·통합 HTML만 갱신합니다. 직접 작성한 요구사항·설계 설명·시험 결과 판정은 덮어쓰지 않습니다. Python과 markdown-it-py가 필요하며 현재 가상환경에서 확인했습니다.</p>
+<p>코드가 바뀌면 <code>유지보수_가이드.md</code>에 따라 관련 문서와 시험 결과도 함께 수정하세요. 자동 생성 자료가 최신이어도 요구사항이나 수동 문서가 자동으로 검증되는 것은 아닙니다.</p>
+<h2>변경 이력</h2>
+<table>
+<thead>
+<tr>
+<th>버전</th>
+<th>날짜</th>
+<th>변경 내용</th>
+<th>검토</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-10-12</td>
+<td>현재 소스 분석, 필수 문서 및 공개 양식 기반 약식 구성, 자동시험 재실행</td>
+<td>팀 검토 대기</td>
+</tr>
+</tbody>
+</table>
+</section><section id="doc-2"><div class="meta">00_안내/요구사항_추적표.md</div><h1>요구사항 추적표</h1>
+<p>문서 ID: MG-02 / 버전: 1.0 / 기준일: 2026-10-12</p>
+<p>요구사항 ID를 기준으로 설계·구현·대표 시험을 찾습니다. 전체 클래스는 DS-02, 인터페이스는 DS-03, 자동 실행 증적은 QA-03에 연결됩니다. 수동 케이스는 실행 전입니다.</p>
+<table>
+<thead>
+<tr>
+<th>요구사항</th>
+<th>컴포넌트</th>
+<th>핵심 코드</th>
+<th>대표 시험</th>
+<th>확인 범위</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REQ-01</td>
+<td>CMP-03·04</td>
+<td>documents.py, rag_service.py, pricing.py</td>
+<td>TC-01, MAN-01</td>
+<td>데이터 검증 통과, 실제 API 미실행</td>
+</tr>
+<tr>
+<td>REQ-02</td>
+<td>CMP-03·04</td>
+<td>rag_service.calculate_facts</td>
+<td>TC-02</td>
+<td>mock 및 원본 계산</td>
+</tr>
+<tr>
+<td>REQ-03</td>
+<td>CMP-03·04</td>
+<td>rag_service.py, declines.py</td>
+<td>TC-03</td>
+<td>기간·단위 회귀</td>
+</tr>
+<tr>
+<td>REQ-04</td>
+<td>CMP-03·04</td>
+<td>retrieval.py, regions.py</td>
+<td>TC-04·16</td>
+<td>전체 모집단 회귀</td>
+</tr>
+<tr>
+<td>REQ-05</td>
+<td>CMP-03·04</td>
+<td>period_queries.py</td>
+<td>TC-05·06·16</td>
+<td>독립 CSV 계산</td>
+</tr>
+<tr>
+<td>REQ-06</td>
+<td>CMP-03</td>
+<td>regions.py, year_query.py, coverage.py</td>
+<td>TC-07·08·16</td>
+<td>모호성·없는 월</td>
+</tr>
+<tr>
+<td>REQ-07</td>
+<td>CMP-02·03</td>
+<td>conversation.py, rag_service.ask</td>
+<td>TC-06·07·09·16, MAN-02</td>
+<td>메모리·mock 후속 대화</td>
+</tr>
+<tr>
+<td>REQ-08</td>
+<td>CMP-05·06</td>
+<td>knowledge_index.py, rag_service.explain</td>
+<td>TC-10, MAN-03</td>
+<td>검색 경로, 실제 의미 품질 미평가</td>
+</tr>
+<tr>
+<td>REQ-09</td>
+<td>CMP-04·07</td>
+<td>documents.py, source_display.py</td>
+<td>TC-01·02, MAN-01</td>
+<td>출처 필드·응답 연결</td>
+</tr>
+<tr>
+<td>REQ-10</td>
+<td>CMP-05</td>
+<td>knowledge_index.py</td>
+<td>TC-11</td>
+<td>임시 색인 변경 감지</td>
+</tr>
+<tr>
+<td>REQ-11</td>
+<td>CMP-01·07</td>
+<td>web/history.py, web/server.py</td>
+<td>TC-12, MAN-04</td>
+<td>오류 기록, 화면 미평가</td>
+</tr>
+<tr>
+<td>REQ-12</td>
+<td>CMP-01·02</td>
+<td>web/server.py, web/service.py, conversation.py</td>
+<td>TC-13</td>
+<td>Host·세션, 모든 경계값 전수 아님</td>
+</tr>
+<tr>
+<td>REQ-13</td>
+<td>CMP-06</td>
+<td>answer_check.py, rag_service._generate</td>
+<td>TC-14</td>
+<td>퍼센트 검사 범위</td>
+</tr>
+<tr>
+<td>REQ-14</td>
+<td>CMP-03</td>
+<td>keyboard.py, rag_service.ask</td>
+<td>TC-15</td>
+<td>정해진 입력 사례</td>
+</tr>
+<tr>
+<td>NFR-01·NFR-02</td>
+<td>CMP-04·05</td>
+<td>documents.py, period_queries.py</td>
+<td>TC-01·05·06·11</td>
+<td>원본·계산 재현성</td>
+</tr>
+<tr>
+<td>NFR-03</td>
+<td>CMP-01</td>
+<td>web/server.py</td>
+<td>TC-13</td>
+<td>로컬 요청 제한 일부</td>
+</tr>
+<tr>
+<td>NFR-04</td>
+<td>CMP-01·06</td>
+<td>web/server.py, rag_service._timed</td>
+<td>TC-12</td>
+<td>시간 기록만 확인, 성능 목표 미정</td>
+</tr>
+<tr>
+<td>NFR-05</td>
+<td>전체</td>
+<td>산출물/도구/refresh.py</td>
+<td>문서 링크·ID 점검</td>
+<td>변경 감지·문서 갱신 절차</td>
+</tr>
+</tbody>
+</table>
+</section><section id="doc-3"><div class="meta">00_안내/유지보수_가이드.md</div><h1>문서 유지보수 가이드</h1>
+<p>문서 ID: MG-01 / 버전: 1.0 / 기준일: 2026-10-12</p>
+<h2>변경별 수정 대상</h2>
+<table>
+<thead>
+<tr>
+<th>코드 변경</th>
+<th>함께 수정할 문서</th>
+<th>재검증</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기능 추가·질문 처리</td>
+<td>요구사항, 컴포넌트, 추적표, 테스트 케이스</td>
+<td>해당 경로와 전체 회귀</td>
+</tr>
+<tr>
+<td>클래스 속성·메서드</td>
+<td>클래스 설계서 및 자동목록</td>
+<td>호출부·데이터 계약</td>
+</tr>
+<tr>
+<td>API·입력 제약</td>
+<td>인터페이스 설계서, 테스트 케이스</td>
+<td>정상·오류·경계 입력</td>
+</tr>
+<tr>
+<td>CSV·지식 안내 변경</td>
+<td>데이터 계약, 기준표, 시험 기대값</td>
+<td>원본 독립 계산 및 색인 정합성</td>
+</tr>
+<tr>
+<td>모델·임베딩 변경</td>
+<td>구현 명세, 기준표, 평가 결과</td>
+<td>실제 API·검색 품질 재평가</td>
+</tr>
+<tr>
+<td>화면 변경</td>
+<td>발표 시나리오, 수동 시험</td>
+<td>화면·기록·오류 안내</td>
+</tr>
+</tbody>
+</table>
+<h2>갱신 절차</h2>
+<ol>
+<li>변경 목적과 영향받는 REQ ID를 기록한다. ID는 삭제·재사용하지 않고 폐기 상태로 남긴다.</li>
+<li>Markdown 문서 원본을 수정한다. 작성일·버전·변경 이력을 함께 적는다.</li>
+<li>자동시험을 실행하고 새 날짜의 로그를 <code>04_시험/실행증적</code>에 저장한다.</li>
+<li>시험 결과서의 건수·실행시간·미실행 항목을 실제 로그와 맞춘다.</li>
+<li><code>도구/refresh.py</code>를 실행한다. 자동 목록·SHA-256·통합 HTML이 갱신된다.</li>
+<li><code>발표용_통합본.html</code>에서 검색·표·링크를 확인한다. 업무 기준은 팀 검토자가 확인한다.</li>
+</ol>
+<p><code>기준정보.json</code>은 마지막 생성 시점의 목록이다. 재생성 시 이전 파일은 <code>기준정보_이전.json</code>으로 보관하므로 장기 이력이 필요하면 별도 날짜 폴더에 기준정보와 실행 로그를 복사하거나 Git에 함께 커밋한다. 기존 보관 사본은 비교용이며 원본 소스와 데이터는 갱신 도구가 수정하지 않는다.</p>
+<h2>간단한 변경 기록 양식</h2>
+<table>
+<thead>
+<tr>
+<th>날짜·버전</th>
+<th>변경 이유</th>
+<th>REQ ID</th>
+<th>코드</th>
+<th>수정 문서</th>
+<th>시험 증적</th>
+<th>검토자</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>작성 시 기입</td>
+<td>변경 목적</td>
+<td>REQ-xx</td>
+<td>파일·함수</td>
+<td>문서 ID</td>
+<td>로그 파일</td>
+<td>팀 검토 시 기입</td>
+</tr>
+</tbody>
+</table>
+</section><section id="doc-4"><div class="meta">01_분석/사용자_요구사항_정의서.md</div><h1>사용자 요구사항 정의서</h1>
+<p>문서 ID: AN-01 / 버전: 1.0 / 기준일: 2026-10-12 / 상태: 현재 구현 기반 팀 검토 초안</p>
+<h2>목적과 사용자</h2>
+<p>사용자는 자연어로 지역과 기간을 질문하고 아파트 월평균 매매가격, 비교, 추이와 근거를 확인한다. 담당 개발자는 원본 데이터와 지식 색인을 관리하고 테스트 기록으로 오류를 추적한다. 팀 검토자는 결과가 원본 계산과 일치하는지 판단한다.</p>
+<p>조회 대상은 아파트 월평균 매매가격이다. 개별 매물 호가, 개별 실거래 내역, 미래 가격 예측과 투자 추천은 범위에 포함하지 않는다. 현재 로컬 PC 실행을 전제로 하며 회사 전체 공개 서비스의 인증·권한·부하 SLA는 별도 설계 대상이다.</p>
+<h2>기능 요구사항</h2>
+<p>우선순위 높음은 핵심 조회 또는 결과 신뢰성에 직접 영향을 주는 항목이다. 구현 확인은 코드에 경로가 있다는 의미이며 실제 자연어 전수 정확성을 의미하지 않는다. 모든 항목의 업무 승인 상태는 팀 검토 대기이다.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>요구사항 및 사용자 관점</th>
+<th>우선순위</th>
+<th>수용 기준</th>
+<th>구현 근거</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REQ-01</td>
+<td>지역·월을 입력해 가격을 조회한다</td>
+<td>높음</td>
+<td>지정한 지역·월의 원본 값과 표시 단위가 일치한다</td>
+<td>rag_service.calculate_facts, pricing</td>
+</tr>
+<tr>
+<td>REQ-02</td>
+<td>두 지역의 가격과 차이를 비교한다</td>
+<td>높음</td>
+<td>두 지역 값과 코드로 계산한 차이를 함께 제공한다</td>
+<td>rag_service.calculate_facts</td>
+</tr>
+<tr>
+<td>REQ-03</td>
+<td>기간의 가격 변화와 변동률을 조회한다</td>
+<td>높음</td>
+<td>(종료값−시작값)/시작값×100, 시작값 0·결측 별도 처리</td>
+<td>rag_service, declines</td>
+</tr>
+<tr>
+<td>REQ-04</td>
+<td>범위 내 최고·최저 지역을 조회한다</td>
+<td>높음</td>
+<td>같은 계층 전체 유효 모집단에서 순위를 계산한다</td>
+<td>retrieval, regions</td>
+</tr>
+<tr>
+<td>REQ-05</td>
+<td>기간 평균과 하락 지역을 확인한다</td>
+<td>높음</td>
+<td>평균은 유효 월의 단순 평균, 결측 제외; 하락은 시작·종료 비교</td>
+<td>period_queries</td>
+</tr>
+<tr>
+<td>REQ-06</td>
+<td>모호한 지역과 없는 기간은 확인 안내를 받는다</td>
+<td>높음</td>
+<td>광주·동구를 임의 선택하지 않고, 없는 월을 다른 월로 대체하지 않는다</td>
+<td>regions, coverage, year_query</td>
+</tr>
+<tr>
+<td>REQ-07</td>
+<td>이전 질문을 이어서 묻고 새 대화를 시작한다</td>
+<td>높음</td>
+<td>기본 최근 3턴 반영, 세션 격리, 초기화 후 이력 0건</td>
+<td>conversation, web.service</td>
+</tr>
+<tr>
+<td>REQ-08</td>
+<td>시장·용어 설명을 검색 근거와 함께 받는다</td>
+<td>높음</td>
+<td>조건에 맞는 지식 문서 사용, 관련 근거가 없으면 생성 생략</td>
+<td>knowledge_index, rag_service.explain</td>
+</tr>
+<tr>
+<td>REQ-09</td>
+<td>답변의 계산 근거와 출처를 확인한다</td>
+<td>높음</td>
+<td>원본 계산 facts와 코드 생성 sources를 제공한다</td>
+<td>source_display, documents</td>
+</tr>
+<tr>
+<td>REQ-10</td>
+<td>원본 변경 시 잘못된 색인을 사용하지 않는다</td>
+<td>높음</td>
+<td>문서·설정 불일치 시 일반 질의 API 호출 전에 오류 처리</td>
+<td>knowledge_index.validate_knowledge_index</td>
+</tr>
+<tr>
+<td>REQ-11</td>
+<td>질문과 결과·오류의 기록을 열람한다</td>
+<td>보통</td>
+<td>처리 결과에 기록 ID, 소요시간, 저장 여부; 실패 시 안내</td>
+<td>web.history, web.server</td>
+</tr>
+<tr>
+<td>REQ-12</td>
+<td>잘못된 입력과 허용되지 않은 웹 요청을 거부한다</td>
+<td>높음</td>
+<td>질문 1~1000자, 유효 단위·세션; 외부 Host 403</td>
+<td>web.service, web.server</td>
+</tr>
+<tr>
+<td>REQ-13</td>
+<td>답변 변동률 오류를 탐지한다</td>
+<td>높음</td>
+<td>불일치 시 1회 재생성하고 지속 시 경고</td>
+<td>answer_check, rag_service._generate</td>
+</tr>
+<tr>
+<td>REQ-14</td>
+<td>한영 오타를 보정해 질문한다</td>
+<td>보통</td>
+<td>지원 가능한 키보드 입력을 한글로 바꾸고 변환 여부 제공</td>
+<td>keyboard, rag_service.ask</td>
+</tr>
+</tbody>
+</table>
+<h2>비기능 요구사항</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>요구사항</th>
+<th>현재 기준과 검증 범위</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NFR-01</td>
+<td>데이터 재현성</td>
+<td>CSV 해시·행·월·지역을 근거에 연결. 원본 변경 시 기준표 갱신</td>
+</tr>
+<tr>
+<td>NFR-02</td>
+<td>값의 정확성</td>
+<td>기간 평균은 Decimal 사용. 일반 수치 계산은 각 모듈 구현 및 원본 대조 시험으로 확인</td>
+</tr>
+<tr>
+<td>NFR-03</td>
+<td>로컬 접근 제한</td>
+<td>127.0.0.1 바인딩, Host/Origin 확인, CSP. 운영용 인증 체계로 간주하지 않음</td>
+</tr>
+<tr>
+<td>NFR-04</td>
+<td>응답 성능</td>
+<td>단계별 소요시간 수집. 현재 버전의 실 API 목표 응답시간과 동시사용자 기준은 미정</td>
+</tr>
+<tr>
+<td>NFR-05</td>
+<td>유지보수성</td>
+<td>요구사항 ID→컴포넌트→코드→테스트 연결, 파일 기준표 및 문서 갱신 절차 제공</td>
+</tr>
+</tbody>
+</table>
+<h2>업무 규칙과 열린 질문</h2>
+<p>보유 기간은 2012-01~2026-08이며 245개 지역, 176개월이다. 최신은 보유 데이터의 최신 월을 뜻한다. 원본에는 4,126개 결측 셀이 있으며 이를 0원으로 간주하지 않는다. 월평균의 단순 평균은 거래 건수 가중 평균과 다르다.</p>
+<p>팀에서 확정할 사항은 요구사항별 담당자, 실제 API 평가 목표, 기록 보관 기간, 외부 배포 여부이다. <code>query_parser.find_regions</code>는 year_query.named_region에 연결되어 지역 축약명·상위 지역·모호성을 처리한다. parse_question 전체 프레임은 현재 호출 연결이 확인되지 않아 파서 전체 기능이 적용되었다고 보지는 않는다.</p>
+</section><section id="doc-5"><div class="meta">02_설계/인터페이스_데이터_설계서.md</div><h1>인터페이스와 데이터 설계서</h1>
+<p>문서 ID: DS-03 / 버전: 1.0 / 기준일: 2026-10-12</p>
+<h2>HTTP 계약</h2>
+<table>
+<thead>
+<tr>
+<th>경로</th>
+<th>메서드</th>
+<th>입력</th>
+<th>정상 결과</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/api/chat</td>
+<td>POST</td>
+<td>question, session_id, 선택 unit</td>
+<td>answer, facts, sources, standalone_question, followup, input_converted, memory_turns, memory_used, timings, route, retrieved, elapsed_seconds, saved, record_id</td>
+</tr>
+<tr>
+<td>/api/reset</td>
+<td>POST</td>
+<td>session_id</td>
+<td>reset: true</td>
+</tr>
+<tr>
+<td>/api/status</td>
+<td>GET</td>
+<td>없음</td>
+<td>프로젝트·출처·기간·결측 안내·키 인식 여부·색인 준비 여부</td>
+</tr>
+<tr>
+<td>/api/history</td>
+<td>GET</td>
+<td>없음</td>
+<td>최근 최대 100건 records</td>
+</tr>
+<tr>
+<td>/api/history/export</td>
+<td>GET</td>
+<td>없음</td>
+<td>전체 records</td>
+</tr>
+<tr>
+<td>/history</td>
+<td>GET</td>
+<td>없음</td>
+<td>기록 HTML</td>
+</tr>
+</tbody>
+</table>
+<p>POST Content-Type은 application/json이다. 본문 크기는 1~16,000바이트, 질문은 공백 제거 후 1~1000자이다. unit은 천원·만원·억원·korean 중 하나이며 생략할 수 있다. session_id는 영숫자·밑줄·하이픈 8~64자이다. 기록 저장 실패 시 record_id가 없고 saved=false와 warning이 포함될 수 있다.</p>
+<pre><code class="language-json">{&quot;question&quot;:&quot;서울 2026년 8월 평균 매매가격&quot;, &quot;session_id&quot;:&quot;demo-session-0001&quot;, &quot;unit&quot;:&quot;korean&quot;}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>HTTP 상태</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>400</td>
+<td>입력 검증 실패 또는 잘못된 JSON·본문 크기</td>
+</tr>
+<tr>
+<td>403</td>
+<td>허용되지 않은 Host 또는 Origin</td>
+</tr>
+<tr>
+<td>404</td>
+<td>없는 경로·허용 정적 폴더 밖 요청</td>
+</tr>
+<tr>
+<td>415</td>
+<td>JSON 이외 Content-Type</td>
+</tr>
+<tr>
+<td>429</td>
+<td>다른 질문 처리 중</td>
+</tr>
+<tr>
+<td>502</td>
+<td>답변 생성 경로의 예외</td>
+</tr>
+<tr>
+<td>503</td>
+<td>상태·기록 조회 실패</td>
+</tr>
+</tbody>
+</table>
+<h2>데이터 계약</h2>
+<p>CSV는 첫 3행이 헤더이며 4행부터 지역 데이터이다. 첫 열은 ID, 다음 4열은 지역 계층, 이후는 월별 가격이다. 첫 행의 월은 연월 표기, 셋째 행의 단위는 천원이다. read_corpus는 행별 열 수·월 형식과 중복·시간순·단위·지역 ID 및 경로 중복을 검사한다.</p>
+<table>
+<thead>
+<tr>
+<th>객체</th>
+<th>주요 필드</th>
+<th>활용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>월 가격 문서</td>
+<td>id, text, metadata.kind=monthly, region_id, month, missing</td>
+<td>정확한 지역·월 조회</td>
+</tr>
+<tr>
+<td>출처 metadata</td>
+<td>source, source_row, source_sha256, region_path</td>
+<td>원본 역추적</td>
+</tr>
+<tr>
+<td>유효 가격</td>
+<td>price_thousand_krw</td>
+<td>천원 단위 계산. 결측 문서에는 값이 없음</td>
+</tr>
+<tr>
+<td>지식 manifest</td>
+<td>source_sha256, documents_sha256, embedding, document_count, collection</td>
+<td>원본·본문·모델 변경 감지</td>
+</tr>
+<tr>
+<td>대화 요약</td>
+<td>question, standalone_question, answer, facts, resolved, clarification, error</td>
+<td>답변은 최대 700자 후 생략표시, facts는 기본 6개</td>
+</tr>
+</tbody>
+</table>
+<p>원본 데이터의 세부 결측 원인은 값 자체만으로 확정할 수 없다. 현재 웹 결측 안내에는 행정구역 개편을 원인으로 표현하는 문구가 있으므로 업무 검토 시 원인 표현의 근거를 확인해야 한다.</p>
+</section><section id="doc-6"><div class="meta">02_설계/컴포넌트_설계서.md</div><h1>컴포넌트 설계서</h1>
+<p>문서 ID: DS-01 / 버전: 1.0 / 기준일: 2026-10-12 / 상태: 현재 구현 기술</p>
+<h2>전체 구조</h2>
+<p>BuBot은 숫자 조회를 원본 데이터 계산으로 처리하고, 서술형 질문에 지식 검색을 결합하는 하이브리드 RAG이다. RAG는 외부 근거를 검색하여 모델의 답변 입력에 함께 넣는 방식이다. 일부 개념·평균·정정 요청은 규칙으로 바로 답하므로 모든 답변이 외부 모델을 호출하지는 않는다.</p>
+<pre><code class="language-text">사용자
+  ├─ 웹 화면 → 로컬 HTTP 서버 → 웹 서비스 ─┐
+  └─ CLI ────────────────────────────────┤
+                                        ↓
+                          대화 메모리 → ask 라우터
+                                        ├─ 규칙·기간 집계 → 원본 계산 응답
+                                        ├─ 수치 조회 → CSV 원본 계산 + 관련 지식
+                                        └─ 설명 질문 → 지식 벡터 검색
+                                                      ↓
+                                            모델 답변 → 변동률 검사
+                                                      ↓
+                                            코드 출처 표시 → 결과
+
+CSV + 안내 Markdown → 지식 문서 생성 → 임베딩 → SQLite 지식 색인
+웹 처리 결과 → 테스트 기록 JSON / TXT / HTML
+</code></pre>
+<h2>컴포넌트 명세</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>구성과 파일</th>
+<th>입력 → 출력</th>
+<th>책임과 의존</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CMP-01</td>
+<td>web/, bubot/web/server.py, service.py</td>
+<td>질문 JSON → 답변 JSON·화면</td>
+<td>요청 검증, 동시 처리 잠금, 대화 호출, 정적 화면</td>
+</tr>
+<tr>
+<td>CMP-02</td>
+<td>conversation.py</td>
+<td>session_id·질문 → 이력 포함 결과</td>
+<td>세션별 최근 턴, TTL·최대 세션, ask 호출</td>
+</tr>
+<tr>
+<td>CMP-03</td>
+<td>rag_service.py, regions.py, coverage.py, year_query.py, period_queries.py, declines.py</td>
+<td>질문·조건 → 계산 결과·확인 질문</td>
+<td>규칙 선처리, 질문 분석, 지역·기간 보정, 경로 선택</td>
+</tr>
+<tr>
+<td>CMP-04</td>
+<td>documents.py, data_cache.py, pricing.py, retrieval.py</td>
+<td>CSV·조회 조건 → 가격 문서·계산</td>
+<td>데이터 검증, 캐시, 금액 표시, 전체 모집단 순위</td>
+</tr>
+<tr>
+<td>CMP-05</td>
+<td>knowledge.py, knowledge_index.py, vector_store.py</td>
+<td>CSV·안내·질문 → 검색 근거</td>
+<td>지식 문서 구성, 임베딩 재사용, SQLite 코사인 검색</td>
+</tr>
+<tr>
+<td>CMP-06</td>
+<td>gpt_api.py, schemas.py, answer_check.py</td>
+<td>질문·근거·계산 → 구조화 분석·답변</td>
+<td>모델 호출, 응답 스키마, 변동률 검사·재생성</td>
+</tr>
+<tr>
+<td>CMP-07</td>
+<td>source_display.py, bubot/web/history.py</td>
+<td>결과·출처 → 기록과 열람 자료</td>
+<td>모델 출처 문구 정리, 코드 출처, 원자적 기록 저장</td>
+</tr>
+</tbody>
+</table>
+<h2>정상 흐름과 예외</h2>
+<p>웹 요청은 형식·크기·Host/Origin을 검사한 뒤 웹 서비스가 질문·단위·세션을 검증한다. 대화 모듈은 이전 요약을 전달하고 ask가 규칙 처리 또는 모델 경로를 선택한다. 일반 모델 경로는 색인 정합성을 먼저 확인한다. 결과에는 답변, facts, sources, 대화 사용량, timings가 포함된다. 웹 서버는 기록 저장 결과와 전체 시간을 추가한다.</p>
+<p>색인 누락·불일치는 재구축 안내 대상이다. 지식 검색 결과가 없으면 근거 없음 안내로 종료한다. 답변의 퍼센트 값 불일치는 1회 재생성 후 경고할 수 있다. 이 검사는 모든 문장이나 모든 가격의 사실 검증이 아니다. 외부 API 예외는 웹에서 502, 입력 오류는 400, 처리 중 추가 질문은 429로 응답한다.</p>
+<h2>경계와 저장소</h2>
+<p><code>data/new_prices.csv</code>는 활성 원본이며 <code>data/data.csv</code>를 현재 조회 원본으로 간주하지 않는다. 가격 문서는 43,365개, 지식 문서는 454개이다. 지식 종류는 guide 18, region_profile 245, market_monthly 176, market_annual 15이다. 현재 답변용 지식 색인과 과거의 가격 문서 벡터 색인을 구분해야 한다.</p>
+<p><code>storage/knowledge_index.json</code>은 색인 식별 정보, <code>storage/vectors/vectors.sqlite3</code>는 지식 문서와 벡터 저장소이다. 대화 문맥은 프로세스 메모리에만 존재한다. 별도 테스트 기록은 디스크에 남으므로 새 대화나 서버 재시작이 저장 기록까지 삭제하지는 않는다.</p>
+<p><code>query_parser.find_regions</code>는 year_query.named_region에서 호출되어 지역명 축약·상위 지역 수식·모호성 판정에 사용된다. Mention은 이 경로에서 사용된다. Period·QueryFrame 및 parse_question 전체 라우팅은 현재 운영 호출이 확인되지 않아 부분 연결로 구분한다.</p>
+</section><section id="doc-7"><div class="meta">02_설계/클래스_설계서.md</div><h1>클래스 설계서</h1>
+<p>문서 ID: DS-02 / 버전: 1.0 / 기준일: 2026-10-12 / 상태: 현재 소스 기준</p>
+<h2>설계 방식</h2>
+<p>BuBot은 함수 중심 모듈과 데이터 클래스가 함께 구성된 프로젝트다. 실제 존재하지 않는 Service·Repository 클래스를 가정하지 않는다. 함수 단위 책임은 컴포넌트 설계서에, 실제 클래스 속성·메서드·행 번호는 <code>클래스_자동목록.md</code>에 연결한다.</p>
+<table>
+<thead>
+<tr>
+<th>클래스</th>
+<th>핵심 속성</th>
+<th>주요 동작</th>
+<th>책임·제약</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Document</td>
+<td>id, text, metadata</td>
+<td>dataclass 생성</td>
+<td>불변 데이터 객체. 월·지역·원본 행·해시 등 근거를 보유</td>
+</tr>
+<tr>
+<td>Corpus</td>
+<td>documents, source_hash, region_count, months, missing_count</td>
+<td>dataclass 생성</td>
+<td>검증된 가격 문서 묶음. Document 여러 개 포함</td>
+</tr>
+<tr>
+<td>KnowledgeCorpus</td>
+<td>documents, source_hash, csv_hash, latest_month</td>
+<td>dataclass 생성</td>
+<td>CSV와 안내문 기반 지식 문서 묶음</td>
+</tr>
+<tr>
+<td>ConversationMemory</td>
+<td>turns, ttl, max_sessions, clock, _sessions, _lock</td>
+<td>check, history, add, reset, size, _expire</td>
+<td>세션 검사·최근 턴 관리. OrderedDict·deque·RLock 사용</td>
+</tr>
+<tr>
+<td>VectorClient</td>
+<td>path 등 생성자 필드</td>
+<td>connect, cached_vectors, cache_vectors</td>
+<td>SQLite 연결 및 임베딩 캐시</td>
+</tr>
+<tr>
+<td>VectorCollection</td>
+<td>client, name 등 생성자 필드</td>
+<td>count, get, upsert, _rows, query</td>
+<td>컬렉션 조회·저장·정규화 벡터 검색</td>
+</tr>
+<tr>
+<td>Analysis</td>
+<td>intent, region_names, month, start_month, end_month, display_unit, level, rewritten_query, message</td>
+<td>Pydantic 검증</td>
+<td>추가 필드 금지, strict=True, 월 YYYY-MM 형식</td>
+</tr>
+<tr>
+<td>Condensed</td>
+<td>is_followup, standalone_question</td>
+<td>Pydantic 검증</td>
+<td>후속 질문 여부와 독립 질문</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td>BaseHTTPRequestHandler 상속</td>
+<td>send, trusted, do_GET, do_POST, log_message</td>
+<td>로컬 HTTP 요청과 응답 처리</td>
+</tr>
+<tr>
+<td>Period</td>
+<td>kind, month, start, end, year, notes, spans</td>
+<td>explicit</td>
+<td>별도 파서 기간 모델. 현재 주 실행 경로 미연결</td>
+</tr>
+<tr>
+<td>Mention</td>
+<td>text, span, candidates, exact, qualifier</td>
+<td>dataclass 생성</td>
+<td>find_regions가 반환하는 지역 표현 후보. named_region에서 사용</td>
+</tr>
+<tr>
+<td>QueryFrame</td>
+<td>text, targets, ambiguous, scope, level, enumerate, period, cues, intent, threshold, top_n</td>
+<td>dataclass 생성</td>
+<td>별도 파서의 질문 프레임. 전체 라우터 연결은 미확인</td>
+</tr>
+</tbody>
+</table>
+<h2>관계</h2>
+<pre><code class="language-text">Corpus ── 포함 ──&gt; Document 목록
+KnowledgeCorpus ── 포함 ──&gt; Document 목록
+VectorCollection ── 참조 ──&gt; VectorClient ── 연결 ──&gt; SQLite
+Handler ── 함수 호출 ──&gt; web.service ──&gt; conversation.chat
+conversation.chat ── 사용 ──&gt; ConversationMemory
+gpt_api ── 응답 검증 ──&gt; Analysis / Condensed
+QueryFrame ── 포함 ──&gt; Period  [현재 미연결 파서]
+</code></pre>
+<h2>핵심 메서드 계약</h2>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>입력</th>
+<th>출력·변경</th>
+<th>예외와 경계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ConversationMemory.check</td>
+<td>세션 문자열</td>
+<td>검증한 문자열</td>
+<td>영숫자·밑줄·하이픈 8~64자 이외 ValueError</td>
+</tr>
+<tr>
+<td>ConversationMemory.history</td>
+<td>session_id</td>
+<td>저장 요약의 목록 사본</td>
+<td>만료 세션 정리 후 반환</td>
+</tr>
+<tr>
+<td>ConversationMemory.add</td>
+<td>session_id, turn</td>
+<td>최근 turns개 유지</td>
+<td>용량 초과 시 오래된 세션 제거</td>
+</tr>
+<tr>
+<td>ConversationMemory.reset</td>
+<td>session_id</td>
+<td>해당 세션 제거</td>
+<td>다른 세션과 저장 기록은 유지</td>
+</tr>
+<tr>
+<td>VectorCollection.upsert</td>
+<td>ids, documents, metadatas, embeddings</td>
+<td>SQLite 저장 및 캐시 갱신</td>
+<td>임베딩 차원은 색인 생성 및 벡터 처리 경로에서 검증</td>
+</tr>
+<tr>
+<td>VectorCollection.query</td>
+<td>query_embeddings, n_results, include, where</td>
+<td>ids·거리·문서·metadata</td>
+<td>where에 맞는 후보의 코사인 거리 순</td>
+</tr>
+<tr>
+<td>Handler.do_POST</td>
+<td>HTTP 요청</td>
+<td>JSON 및 HTTP 상태</td>
+<td>형식·크기·동시 요청·외부 호출 오류 구분</td>
+</tr>
+</tbody>
+</table>
+<p>Analysis.intent는 lookup·trend·compare·argmax·argmin·explain·clarify로 제한된다. 규칙 경로의 concept·period_decline 같은 내부 intent는 별도의 결과 dict에 들어가므로 이 스키마의 허용값을 모든 내부 경로에 적용하지 않는다.</p>
+</section><section id="doc-8"><div class="meta">02_설계/클래스_자동목록.md</div><h1>실제 클래스 자동 목록</h1>
+<p>생성 시점: 2026-10-12T10:04:34+09:00</p>
+<p>AST로 추출한 선언이며 실행 연결 여부는 컴포넌트 설계서를 확인하세요.</p>
+<table>
+<thead>
+<tr>
+<th>파일</th>
+<th>행</th>
+<th>클래스</th>
+<th>상속</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bubot/conversation.py</td>
+<td>44</td>
+<td>ConversationMemory</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/documents.py</td>
+<td>18</td>
+<td>Document</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/documents.py</td>
+<td>25</td>
+<td>Corpus</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/knowledge.py</td>
+<td>30</td>
+<td>KnowledgeCorpus</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>39</td>
+<td>Period</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>273</td>
+<td>Mention</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>438</td>
+<td>QueryFrame</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/schemas.py</td>
+<td>8</td>
+<td>Analysis</td>
+<td>BaseModel</td>
+</tr>
+<tr>
+<td>bubot/schemas.py</td>
+<td>21</td>
+<td>Condensed</td>
+<td>BaseModel</td>
+</tr>
+<tr>
+<td>bubot/vector_store.py</td>
+<td>40</td>
+<td>VectorClient</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/vector_store.py</td>
+<td>71</td>
+<td>VectorCollection</td>
+<td>없음</td>
+</tr>
+<tr>
+<td>bubot/web/server.py</td>
+<td>18</td>
+<td>Handler</td>
+<td>BaseHTTPRequestHandler</td>
+</tr>
+</tbody>
+</table>
+<h2>ConversationMemory</h2>
+<p>파일: <code>bubot/conversation.py:44</code> / 상속: <code>없음</code></p>
+<p>속성: <code>_sessions</code>, <code>_lock</code>, <code>turns</code>, <code>ttl</code>, <code>max_sessions</code>, <code>clock</code></p>
+<table>
+<thead>
+<tr>
+<th>메서드 서명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>init</strong>(self, turns=MEMORY_TURNS, ttl=MEMORY_TTL_SECONDS, max_sessions=MEMORY_MAX_SESSIONS, clock=time.monotonic)</td>
+</tr>
+<tr>
+<td>check(session_id)</td>
+</tr>
+<tr>
+<td>_expire(self)</td>
+</tr>
+<tr>
+<td>history(self, session_id)</td>
+</tr>
+<tr>
+<td>add(self, session_id, turn)</td>
+</tr>
+<tr>
+<td>reset(self, session_id)</td>
+</tr>
+<tr>
+<td>size(self, session_id)</td>
+</tr>
+</tbody>
+</table>
+<h2>Document</h2>
+<p>파일: <code>bubot/documents.py:18</code> / 상속: <code>없음</code></p>
+<p>속성: <code>id: str</code>, <code>text: str</code>, <code>metadata: dict</code></p>
+<p>명시적 메서드 없음. 데이터 모델 생성·검증 동작은 데코레이터 또는 기반 클래스가 담당합니다.</p>
+<h2>Corpus</h2>
+<p>파일: <code>bubot/documents.py:25</code> / 상속: <code>없음</code></p>
+<p>속성: <code>documents: list[Document]</code>, <code>source_hash: str</code>, <code>region_count: int</code>, <code>months: tuple[str, ...]</code>, <code>missing_count: int</code></p>
+<p>명시적 메서드 없음. 데이터 모델 생성·검증 동작은 데코레이터 또는 기반 클래스가 담당합니다.</p>
+<h2>KnowledgeCorpus</h2>
+<p>파일: <code>bubot/knowledge.py:30</code> / 상속: <code>없음</code></p>
+<p>속성: <code>documents: list</code>, <code>source_hash: str</code>, <code>csv_hash: str</code>, <code>latest_month: str</code></p>
+<p>명시적 메서드 없음. 데이터 모델 생성·검증 동작은 데코레이터 또는 기반 클래스가 담당합니다.</p>
+<h2>Period</h2>
+<p>파일: <code>bubot/query_parser.py:39</code> / 상속: <code>없음</code></p>
+<p>속성: <code>kind: str</code>, <code>month: str | None</code>, <code>start: str | None</code>, <code>end: str | None</code>, <code>year: str | None</code>, <code>notes: list</code>, <code>spans: list</code></p>
+<table>
+<thead>
+<tr>
+<th>메서드 서명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>explicit(self)</td>
+</tr>
+</tbody>
+</table>
+<h2>Mention</h2>
+<p>파일: <code>bubot/query_parser.py:273</code> / 상속: <code>없음</code></p>
+<p>속성: <code>text: str</code>, <code>span: tuple</code>, <code>candidates: list</code>, <code>exact: bool</code>, <code>qualifier: bool</code></p>
+<p>명시적 메서드 없음. 데이터 모델 생성·검증 동작은 데코레이터 또는 기반 클래스가 담당합니다.</p>
+<h2>QueryFrame</h2>
+<p>파일: <code>bubot/query_parser.py:438</code> / 상속: <code>없음</code></p>
+<p>속성: <code>text: str</code>, <code>targets: list</code>, <code>ambiguous: list</code>, <code>scope: str | None</code>, <code>level: str | None</code>, <code>enumerate: bool</code>, <code>period: Period</code>, <code>cues: list</code>, <code>intent: str | None</code>, <code>threshold: tuple | None</code>, <code>top_n: int | None</code></p>
+<p>명시적 메서드 없음. 데이터 모델 생성·검증 동작은 데코레이터 또는 기반 클래스가 담당합니다.</p>
+<h2>Analysis</h2>
+<p>파일: <code>bubot/schemas.py:8</code> / 상속: <code>BaseModel</code></p>
+<p>속성: <code>intent: Literal['lookup', 'trend', 'compare', 'argmax', 'argmin', 'explain', 'clarify']</code>, <code>region_names: list[str]</code>, <code>month: Month | None</code>, <code>start_month: Month | None</code>, <code>end_month: Month | None</code>, <code>display_unit: Literal['천원', '만원', '억원', 'korean'] | None</code>, <code>level: Literal['시도', '시군구', '권역']</code>, <code>rewritten_query: str</code>, <code>message: str</code></p>
+<p>명시적 메서드 없음. 데이터 모델 생성·검증 동작은 데코레이터 또는 기반 클래스가 담당합니다.</p>
+<h2>Condensed</h2>
+<p>파일: <code>bubot/schemas.py:21</code> / 상속: <code>BaseModel</code></p>
+<p>속성: <code>is_followup: bool</code>, <code>standalone_question: str</code></p>
+<p>명시적 메서드 없음. 데이터 모델 생성·검증 동작은 데코레이터 또는 기반 클래스가 담당합니다.</p>
+<h2>VectorClient</h2>
+<p>파일: <code>bubot/vector_store.py:40</code> / 상속: <code>없음</code></p>
+<p>속성: <code>file</code></p>
+<table>
+<thead>
+<tr>
+<th>메서드 서명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>init</strong>(self, path)</td>
+</tr>
+<tr>
+<td>cached_vectors(self, keys)</td>
+</tr>
+<tr>
+<td>cache_vectors(self, items)</td>
+</tr>
+<tr>
+<td>connect(self)</td>
+</tr>
+</tbody>
+</table>
+<h2>VectorCollection</h2>
+<p>파일: <code>bubot/vector_store.py:71</code> / 상속: <code>없음</code></p>
+<p>속성: <code>client</code>, <code>name</code></p>
+<table>
+<thead>
+<tr>
+<th>메서드 서명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>init</strong>(self, client, name)</td>
+</tr>
+<tr>
+<td>count(self)</td>
+</tr>
+<tr>
+<td>get(self, ids, include=None)</td>
+</tr>
+<tr>
+<td>upsert(self, ids, documents, metadatas, embeddings)</td>
+</tr>
+<tr>
+<td>_rows(self)</td>
+</tr>
+<tr>
+<td>query(self, query_embeddings, n_results, include=None, where=None)</td>
+</tr>
+</tbody>
+</table>
+<h2>Handler</h2>
+<p>파일: <code>bubot/web/server.py:18</code> / 상속: <code>BaseHTTPRequestHandler</code></p>
+<p>속성:</p>
+<table>
+<thead>
+<tr>
+<th>메서드 서명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>log_message(self, *_)</td>
+</tr>
+<tr>
+<td>send(self, code, body, content_type='application/json; charset=utf-8', csp=CSP)</td>
+</tr>
+<tr>
+<td>trusted(self)</td>
+</tr>
+<tr>
+<td>do_GET(self)</td>
+</tr>
+<tr>
+<td>do_POST(self)</td>
+</tr>
+</tbody>
+</table>
+</section><section id="doc-9"><div class="meta">03_구현/구현_명세서.md</div><h1>구현 명세서</h1>
+<p>문서 ID: IM-01 / 버전: 1.0 / 기준일: 2026-10-12</p>
+<h2>현재 구현</h2>
+<p>Python 표준 HTTP 서버와 HTML·CSS·JavaScript 화면을 사용한다. 의존 패키지는 requirements.txt의 openai&gt;=2.0,&lt;3, numpy&gt;=1.26,&lt;3, pydantic&gt;=2,&lt;3이다. 벡터 저장은 SQLite, 검색은 정규화 벡터의 코사인 거리이다. 특정 벡터 DB 서버를 별도로 요구하지 않는다.</p>
+<p>실행 진입점은 main.py의 CLI와 web_main.py의 웹 서버이다. 핵심 업무는 rag_service.ask가 조정한다. 개념·정정·기간 평균 등 규칙 분기 후 일반 조회/비교/추이/순위 또는 지식 설명으로 연결한다. 질문 분석과 답변 생성은 gpt_api에 분리되어 있다.</p>
+<h2>실행과 갱신</h2>
+<p>프로젝트 루트에서 다음 명령을 실행한다.</p>
+<pre><code class="language-powershell"># 로컬 화면 시작
+.\.venv\Scripts\python.exe web_main.py
+# 문서 생성: 원본 검증 및 storage 문서 갱신
+.\.venv\Scripts\python.exe main.py prepare
+# 지식 색인 갱신: 실제 임베딩 API 호출 및 비용 발생 가능
+.\.venv\Scripts\python.exe main.py embed
+# 대화형 CLI: 실제 API 호출 가능
+.\.venv\Scripts\python.exe main.py chat
+# 기존 자동시험
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+</code></pre>
+<p>웹 주소는 http://127.0.0.1:8000 이며 포트는 --port로 변경한다. 자격증명 설정값은 문서나 발표 자료에 복사하지 않는다. 이번 산출물 작업에서는 실제 색인 재구축이나 유료 API 평가를 실행하지 않았다.</p>
+<h2>주요 설정</h2>
+<table>
+<thead>
+<tr>
+<th>설정</th>
+<th>기본값</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CSV_PATH</td>
+<td>data/new_prices.csv</td>
+<td>활성 원본</td>
+</tr>
+<tr>
+<td>BUBOT_PRICE_UNIT</td>
+<td>korean</td>
+<td>기본 금액 표시</td>
+</tr>
+<tr>
+<td>BUBOT_MEMORY_TURNS</td>
+<td>3, 최소 3</td>
+<td>세션 기억 턴</td>
+</tr>
+<tr>
+<td>BUBOT_MEMORY_TTL_SECONDS</td>
+<td>7200</td>
+<td>마지막 질문 후 유효 시간</td>
+</tr>
+<tr>
+<td>MEMORY_MAX_SESSIONS</td>
+<td>200</td>
+<td>메모리 최대 세션</td>
+</tr>
+<tr>
+<td>BUBOT_KNOWLEDGE_MAX_DISTANCE</td>
+<td>0.75</td>
+<td>지식 검색 거리 임계값</td>
+</tr>
+<tr>
+<td>KNOWLEDGE_TOP_K</td>
+<td>4</td>
+<td>기본 지식 검색 수</td>
+</tr>
+</tbody>
+</table>
+<h2>기존 자료와 현재 코드의 차이</h2>
+<p>2026-10-08 구조검토 자료에는 대화 기억·지식 검색·최종 수치 검사가 없다고 기록되어 있다. 현재 소스에는 ConversationMemory, knowledge_index 및 _generate의 퍼센트 검사가 존재하므로 과거 보고서의 해당 문구를 현재 상태 설명으로 재사용하지 않는다. 변경 일시·작업자·커밋은 Git 이력이 없으므로 확정할 수 없다.</p>
+<h2>확인된 보완 사항</h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>현재 사실</th>
+<th>다음 조치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>별도 파서</td>
+<td>find_regions는 named_region에 연결, parse_question 전체 연결은 미확인</td>
+<td>전체 프레임 도입 범위 결정 및 시험</td>
+</tr>
+<tr>
+<td>수치 검사 범위</td>
+<td>퍼센트 중심, 모든 주장 검증 아님</td>
+<td>가격·기간·지역 일치 검증 범위 검토</td>
+</tr>
+<tr>
+<td>대화 영속성</td>
+<td>메모리 이력은 재시작 시 사라짐</td>
+<td>운영 요구가 생기면 별도 영속화 설계</td>
+</tr>
+<tr>
+<td>처리량</td>
+<td>웹 질문은 전역 잠금으로 1건씩 처리</td>
+<td>실제 동시 이용 요구와 성능 시험 정의</td>
+</tr>
+<tr>
+<td>기록 보존</td>
+<td>테스트 기록은 별도 디스크 저장</td>
+<td>보존 기간 및 삭제 절차 업무 결정</td>
+</tr>
+<tr>
+<td>최신 자연어 품질</td>
+<td>이번에는 실제 API 평가 미실행</td>
+<td>고정 평가셋과 신규 질문으로 추가 검증</td>
+</tr>
+</tbody>
+</table>
+<h2>최종 확인 중 반영된 코드 변경</h2>
+<p>2026-10-12 작업 중 확인된 최신 코드에는 다음 수정이 포함되어 있다. 이번 산출물 작성에서는 운영 코드를 직접 수정하지 않았으며 해당 최신 상태를 읽어 반영했다.</p>
+<ul>
+<li>year_query.named_region은 query_parser.find_regions를 재사용해 강남·포항 남구 같은 축약명과 모호성을 처리한다.</li>
+<li>최근 N년 평균은 최신 월 포함 N×12개월을 사용한다. 예: 최근 3년은 2023-09~2026-08의 36개월이다. 변동률 비교는 N년 전 같은 달 기준을 유지한다.</li>
+<li>포항 남구처럼 상위 지역 접미사를 생략한 입력을 임의 추정으로 잘못 판단하지 않도록 처리한다.</li>
+<li>전국·시도 순위의 후속 질문은 이전 지역을 무조건 상속하지 않는다. 일반적인 지역 생략 후속 질문은 지역 문맥을 유지한다.</li>
+<li>tests/test_review_20261012.py의 5개 회귀시험이 추가되었다.</li>
+</ul>
+</section><section id="doc-10"><div class="meta">03_구현/함수_자동목록.md</div><h1>주요 모듈 함수 자동 목록</h1>
+<p>생성 시점: 2026-10-12T10:04:34+09:00</p>
+<p>코드에 설명이 작성된 모듈 최상위 함수 목록입니다. 독립 함수의 존재가 사용자 기능 연결을 뜻하지는 않습니다.</p>
+<table>
+<thead>
+<tr>
+<th>파일</th>
+<th>행</th>
+<th>함수</th>
+<th>코드 설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bubot/answer_check.py</td>
+<td>27</td>
+<td>number_issues</td>
+<td>근거와 맞지 않는 비율 표현 목록. 비어 있으면 통과입니다.</td>
+</tr>
+<tr>
+<td>bubot/conversation.py</td>
+<td>19</td>
+<td>summarize_turn</td>
+<td>다음 질문 해석에 필요한 내용만 남깁니다 (원문 질문, 재구성 질문, 답변 요약, 확정 조건).</td>
+</tr>
+<tr>
+<td>bubot/conversation.py</td>
+<td>90</td>
+<td>chat</td>
+<td>이전 대화를 반영해 질문에 답하고, 결과를 메모리에 기록합니다.</td>
+</tr>
+<tr>
+<td>bubot/coverage.py</td>
+<td>13</td>
+<td>explicit_years</td>
+<td>질문에 연도로 적힌 값만 돌려줍니다 (네 자리는 항상 연도, 두 자리는 기간 표현이면 제외).</td>
+</tr>
+<tr>
+<td>bubot/data_cache.py</td>
+<td>27</td>
+<td>documents_by_id</td>
+<td>문서 ID → 문서. 요청마다 4만여 개 문서를 다시 훑지 않도록 같은 corpus 객체에 대해 한 번만 만듭니다.</td>
+</tr>
+<tr>
+<td>bubot/keyboard.py</td>
+<td>23</td>
+<td>keyboard_to_hangul</td>
+<td>변환된 한글 문자열. 변환 대상이 아니거나 완성되지 않는 글자가 있으면 None.</td>
+</tr>
+<tr>
+<td>bubot/knowledge.py</td>
+<td>74</td>
+<td>_rank_pool</td>
+<td>같은 시도 안의 같은 계층(시군구) 또는 전국 시도 목록. (구) 지역 제외.</td>
+</tr>
+<tr>
+<td>bubot/knowledge_index.py</td>
+<td>98</td>
+<td>retrieve</td>
+<td>질문 벡터 1개로 여러 후보군을 검색합니다.&lt;br&gt;&lt;br&gt;- region: 확정된 지역의 프로필 (조건 일치 문서이므로 거리 임계값 미적용)&lt;br&gt;- period: 확정된 월/연도의 시장 요약 (조건 일치 문서이므로 거리 임계값 미적용)&lt;br&gt;- general: 조건 없이 의미가 가까운 문서 (max_distance 이내만 사용)&lt;br&gt;반환: (근거 문서 목록, 진단 정보)</td>
+</tr>
+<tr>
+<td>bubot/period_queries.py</td>
+<td>19</td>
+<td>period</td>
+<td>inclusive=True: 기간 평균용. 'N년'을 최신 월 포함 N×12개월로 봅니다 (False면 N년 전 같은 달부터, 변동률 비교용).</td>
+</tr>
+<tr>
+<td>bubot/period_queries.py</td>
+<td>96</td>
+<td>correction_query</td>
+<td>사용자의 모순 지적은 원본으로 확인하며 이전 답변의 이유를 추측하지 않습니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>27</td>
+<td>normalize</td>
+<td>전각 숫자·공백을 정리합니다. '2023년도'는 '2023년'으로 봅니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>63</td>
+<td>_year_ok</td>
+<td>두 자리 숫자+년이 기간('10년간', '최근 10년')이 아니라 연도일 때만 True.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>75</td>
+<td>_period_tokens</td>
+<td>기간 표현을 위치 순서대로 찾습니다. 앞선 패턴이 차지한 위치는 뒤 패턴이 다시 쓰지 않습니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>145</td>
+<td>_fill_month_only</td>
+<td>'3월부터 8월까지'처럼 연도가 없는 월은 앞쪽 연도를 쓰고, 없으면 최신 월 이전의 가장 최근 그 달입니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>166</td>
+<td>parse_period</td>
+<td>질문의 기간 표현을 데이터 월로 확정합니다. months: 보유 월 목록(정렬).</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>214</td>
+<td>_fit_to_data</td>
+<td>보유 기간 밖의 시점을 데이터 안으로 맞추고 안내 문구를 남깁니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>234</td>
+<td>year_point</td>
+<td>연도만 지정된 단일 시점: 그 해의 마지막 보유 월.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>240</td>
+<td>year_range</td>
+<td>연도만 지정된 추이: 전년 12월(없으면 그 해 첫 보유 월) ~ 그 해 마지막 보유 월.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>282</td>
+<td>_forms</td>
+<td>지역 이름 표기 → 후보 id 목록. catalog_key: ((id, name, level, path), ...)</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>312</td>
+<td>_boundary_ok</td>
+<td>지역 이름 앞뒤가 낱말 경계인지 ('서울대'·'상당히'·'수원지' 제외, '서울중구'처럼 붙여 쓴 지역은 허용).</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>324</td>
+<td>find_regions</td>
+<td>질문에 적힌 지역 언급을 찾고, 상위 지역 수식('서울 중구')과 같은 이름 지역의 후보를 정리합니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>395</td>
+<td>find_cues</td>
+<td>의도 단서를 질문에 나온 순서대로 돌려줍니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>455</td>
+<td>parse_question</td>
+<td>질문을 지역·기간·의도 단서로 나눕니다. 결과는 문장과 데이터에만 의존합니다.</td>
+</tr>
+<tr>
+<td>bubot/query_parser.py</td>
+<td>485</td>
+<td>decide_intent</td>
+<td>의도 단서로 의도를 확정합니다. 단서가 부족하거나 서로 부딪히면 None (LLM 해석 사용).</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>68</td>
+<td>open_index</td>
+<td>원본·지식 문서와 지식 색인을 확인합니다. API 비용이 생기기 전에 실패해야 합니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>79</td>
+<td>apply_relative_period</td>
+<td>상대 기간은 모델 해석 대신 코드로 확정합니다.&lt;br&gt;&lt;br&gt;- '최근 N개월': 최신 월 포함 N개월 (예: 최신 8월 → 6~8월), '최근 N년': N년 전 같은 달 ~ 최신 월&lt;br&gt;- 'N년 전·N개월 전': 최신 월에서 N년(N개월) 전 같은 달. '10년 전부터·10년 전보다'·추이 질문은 그 달 ~ 최신 월&lt;br&gt;- 연도·월 없이 '요즘·현재·최근'만 있으면 데이터 최신 월 기준입니다. 모델이 학습 시점 무렵의&lt;br&gt;  과거 월(예: 2023-10)을 고르는 것을 막습니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>148</td>
+<td>_clean_names</td>
+<td>모델이 지역명 자리에 넣은 계층 이름('시도')·날짜를 빼고, 지역명에 붙은 조사('제주시는')를 뗍니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>158</td>
+<td>_written_scope</td>
+<td>지역 경로 중 질문에 적힌 가장 구체적인 부분. '서울 / 강북지역 / 도심권'이고 질문에 '서울'만 있으면 '서울'.&lt;br&gt;&lt;br&gt;'강남구'의 '강남'처럼 시·군·구를 뺀 이름도 적힌 것으로 봅니다. 아무것도 적혀 있지 않으면 None.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>200</td>
+<td>_reject_guessed_parent</td>
+<td>'중구'처럼 여러 시도에 있는 이름인데 질문에 시도가 없으면, 모델이 붙인 상위 지역은 추측입니다.&lt;br&gt;&lt;br&gt;resolve_region의 모호성 오류와 같은 형식으로 알려 ask()가 후보를 보여 주는 확인 질문으로 바꿉니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>226</td>
+<td>_prefer_written_names</td>
+<td>질문에 '강남'이라고 썼는데 모델이 권역 '강남지역'을 고른 경우, 적힌 이름 그대로(강남구) 해석합니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>244</td>
+<td>_written_alone</td>
+<td>'서울 중구'의 '서울'처럼 하위 지역 앞의 수식어로만 쓰였으면 False, 따로 쓰인 곳이 있으면 True.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>260</td>
+<td>_narrow_ids</td>
+<td>모델이 지역을 계층별로 나눠 넣은 경우를 질문에 적힌 대로 정리합니다.&lt;br&gt;&lt;br&gt;- 조회·비교·서술: 다른 지역의 상위 지역인데 질문에 따로 적히지 않은 것(추가된 '서울', '서울 중구'의 수식어 '서울')은 뺍니다.&lt;br&gt;  '강남구와 서울 비교'처럼 상위 지역을 따로 적으면 그대로 비교합니다.&lt;br&gt;- 순위: 공통 상위 지역이 질문에 있으면 그 지역이 검색 범위(서울의 구), 같은 계층을 나열만 했으면 전국 범위입니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>292</td>
+<td>_year_only</td>
+<td>월 없이 연도만 지정한 질문의 연도: 분석 결과가 한 해 범위이거나, 질문에 명시 연도가 하나뿐일 때.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>301</td>
+<td>_generate</td>
+<td>답변을 만든 뒤 문장 속 변동률(%)을 근거와 대조합니다.&lt;br&gt;&lt;br&gt;부호가 뒤집혔거나 근거에 없는 값이 있으면 오류 목록을 알려 주고 1회 다시 쓰게 합니다.&lt;br&gt;그래도 맞지 않으면 답변 끝에 확인 안내를 붙입니다. 결과는 analysis['answer_check']에 남습니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>323</td>
+<td>_timed</td>
+<td>API 호출 단계별 소요 시간(초)을 기록합니다. 테스트 기록에서 느린 단계를 찾는 용도입니다.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>332</td>
+<td>explain</td>
+<td>서술 경로: 지식 색인 벡터 검색 → 검색 근거만으로 답변.</td>
+</tr>
+<tr>
+<td>bubot/rag_service.py</td>
+<td>504</td>
+<td>ask</td>
+<td>history: 이전 대화 요약 목록(bubot.conversation). 있으면 먼저 단독 질문으로 재구성합니다.</td>
+</tr>
+<tr>
+<td>bubot/retrieval.py</td>
+<td>34</td>
+<td>argmax_price</td>
+<td>조건 내에서 price_thousand_krw 최댓값 문서 반환.</td>
+</tr>
+<tr>
+<td>bubot/retrieval.py</td>
+<td>39</td>
+<td>argmin_price</td>
+<td>조건 내에서 price_thousand_krw 최솟값 문서 반환.</td>
+</tr>
+<tr>
+<td>bubot/web/service.py</td>
+<td>11</td>
+<td>route_of</td>
+<td>규칙 기반 선처리와 확인 질문은 rag_service가 route를 붙이지 않으므로 화면용 이름을 정합니다.</td>
+</tr>
+<tr>
+<td>bubot/web/service.py</td>
+<td>45</td>
+<td>coverage_note</td>
+<td>결측이 있는 지역 수와, 값이 있는 기간이 가장 짧은 지역 묶음을 원본에서 계산해 안내합니다.</td>
+</tr>
+<tr>
+<td>bubot/year_query.py</td>
+<td>18</td>
+<td>resolve_relative_years</td>
+<td>'작년 대비'는 '최근 1년'(같은 달 1년 전과 비교)으로, 작년·올해 등은 명시 연도로 바꿉니다.</td>
+</tr>
+<tr>
+<td>bubot/year_query.py</td>
+<td>26</td>
+<td>named_region</td>
+<td>질문에 적힌 지역명 중 가장 구체적인 지역 하나. (지역, 모호 여부)를 돌려줍니다.&lt;br&gt;&lt;br&gt;'서울 중구'처럼 상위 지역을 함께 적으면 그 경로를 모두 포함하는 지역을 고릅니다.&lt;br&gt;'강남'(강남구), '포항 남구'처럼 줄인 이름·상위 지역 수식도 인식하고, '중구'·'광주'처럼 여러 곳에 있는&lt;br&gt;이름은 임의로 고르지 않고 모호(True)로 돌려줍니다. (2026-10-12: query_parser.find_regions 사용)</td>
+</tr>
+<tr>
+<td>gpt_api.py</td>
+<td>56</td>
+<td>shared_client</td>
+<td>연결(HTTPS keep-alive)을 재사용하는 클라이언트. 키나 생성 함수가 바뀌면 새로 만듭니다.</td>
+</tr>
+<tr>
+<td>gpt_api.py</td>
+<td>130</td>
+<td>condense_question</td>
+<td>이전 대화(최근 N턴)를 반영해 현재 질문을 단독으로 이해 가능한 질문으로 바꿉니다.</td>
+</tr>
+<tr>
+<td>gpt_api.py</td>
+<td>161</td>
+<td>generate_answer</td>
+<td>correction: 직전 답변에서 근거와 맞지 않았던 수치 목록 (bubot.answer_check). 있으면 바로잡아 다시 씁니다.</td>
+</tr>
+</tbody>
+</table>
+</section><section id="doc-11"><div class="meta">04_시험/시험_결과서.md</div><h1>시험 결과서</h1>
+<p>문서 ID: QA-03 / 버전: 1.0 / 실행일: 2026-10-12 Asia/Seoul / 판정: 자동 회귀시험 통과</p>
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>결과</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>명령</td>
+<td>.venv/Scripts/python.exe -m unittest discover -s tests -v</td>
+</tr>
+<tr>
+<td>실행</td>
+<td>125건</td>
+</tr>
+<tr>
+<td>통과</td>
+<td>125건</td>
+</tr>
+<tr>
+<td>실패·오류</td>
+<td>0건</td>
+</tr>
+<tr>
+<td>실행시간</td>
+<td>23.586초, unittest 출력 기준</td>
+</tr>
+<tr>
+<td>증적</td>
+<td>실행증적/unittest_20261012_final.txt</td>
+</tr>
+<tr>
+<td>시험 방식</td>
+<td>기존 자동시험, mock·오프라인 임베딩 및 로컬 HTTP 시험</td>
+</tr>
+<tr>
+<td>미실행</td>
+<td>실제 API 자연어 전수 평가, 브라우저 수동 시연, 부하·운영 보안 시험</td>
+</tr>
+</tbody>
+</table>
+<p>125개 시험은 현재 데이터 및 테스트 코드의 기대값을 통과했다. 모델의 자유로운 자연어 응답 전체가 정확하다는 의미는 아니다. 최신 코드에 새로 추가된 모든 함수가 시험되었다는 의미도 아니며, query_parser.find_regions의 부분 연결은 새 회귀시험으로 확인했으며 전체 질문 프레임 통합은 별도 확인 대상이다.</p>
+<p>최초 실행 120건 통과 로그도 보존했다. 작성 중 추가된 5개 회귀시험을 포함해 최종 125건을 다시 실행했다. 환경은 Windows / Python 3.12.14이다.</p>
+<h2>과거 평가와 구분</h2>
+<p><code>evaluations/accuracy_summary.json</code>에는 30문항 중 24문항 통과가 저장되어 있다. 이는 과거 실행 결과이며 현재 버전의 80% 정확도라는 표현에 사용할 수 없다. 원본 데이터·분기·검색 구조가 변경되어 동일 평가셋 재실행이 필요하다. 과거 기록은 보존하고 새 결과로 덮어쓰지 않는다.</p>
+<h2>잔여 검증</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>항목</th>
+<th>상태</th>
+<th>완료 조건</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPEN-01</td>
+<td>실제 API 질문과 후속 대화</td>
+<td>미실행</td>
+<td>수동 케이스 MAN-01~03 실행 및 실제 결과 기입</td>
+</tr>
+<tr>
+<td>OPEN-02</td>
+<td>query_parser 전체 프레임 통합</td>
+<td>지역 탐지 부분 연결</td>
+<td>전체 프레임 사용 여부 결정 및 시험</td>
+</tr>
+<tr>
+<td>OPEN-03</td>
+<td>브라우저 표시와 기록 탐색</td>
+<td>미실행</td>
+<td>MAN-04 실행 및 화면 검토</td>
+</tr>
+<tr>
+<td>OPEN-04</td>
+<td>요구사항 업무 승인</td>
+<td>검토 대기</td>
+<td>담당 팀의 범위·수용 기준 확인</td>
+</tr>
+</tbody>
+</table>
+<p>자동시험에서 관측된 실패는 없다. 위 잔여 항목을 자동시험 결함이나 통과로 임의 분류하지 않는다.</p>
+</section><section id="doc-12"><div class="meta">04_시험/시험_계획서.md</div><h1>시험 계획서</h1>
+<p>문서 ID: QA-01 / 버전: 1.0 / 기준일: 2026-10-12</p>
+<h2>범위와 환경</h2>
+<p>기존 tests의 unittest를 실행해 원본 파싱·계산·라우팅·대화·지식 색인·웹 응답 회귀를 확인한다. 환경은 Windows, 프로젝트 가상환경 Python, 활성 CSV 및 안내 문서이다. API 응답과 임베딩은 mock 또는 오프라인 fixture로 대체하는 기존 시험 구조를 사용한다. 일부 웹 시험은 로컬 임시 HTTP 서버를 구동한다.</p>
+<h2>수행 단계</h2>
+<ol>
+<li>코드·데이터 해시 기준과 실행일을 기록한다.</li>
+<li><code>python -m unittest discover -s tests -v</code>를 실행하고 전체 로그를 보관한다.</li>
+<li>실패가 있으면 시험 이름·기대값·실제값·재현 조건을 결함표에 적는다.</li>
+<li>요구사항 추적표의 핵심 케이스와 자동시험 결과를 대조한다.</li>
+<li>별도 실 API·브라우저 수동 케이스는 실제 수행 후 결과를 기입한다.</li>
+</ol>
+<h2>판정 기준</h2>
+<p>자동시험은 실행된 assertion이 모두 통과하면 PASS이다. 실행하지 않은 케이스는 미실행, 환경 문제로 실행 불가능하면 차단으로 기록한다. 자동시험의 통과율을 자연어 정답률로 표현하지 않는다. 모델 mock 시험은 호출 경로와 근거 전달을 확인하지만 실제 모델 품질을 측정하지 않는다.</p>
+<p>팀 제출 가능 기준은 필수 문서 구비와 최신 자동시험 결과·미실행 항목의 명시이다. 운영 배포 승인 기준은 이번 문서 범위에 포함하지 않는다.</p>
+</section><section id="doc-13"><div class="meta">04_시험/자동시험_목록.md</div><h1>자동시험 목록</h1>
+<p>생성 시점: 2026-10-12T10:04:34+09:00</p>
+<p>현재 소스에 선언된 시험 메서드 127개. 이 목록은 실행 결과가 아닙니다. 실제 결과는 시험 결과서와 날짜별 로그를 확인하세요.</p>
+<table>
+<thead>
+<tr>
+<th>시험 식별자</th>
+<th>파일</th>
+<th>행</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>test_api_config.APIConfigTests.test_file_key_reaches_sdk_without_network</td>
+<td>tests/test_api_config.py</td>
+<td>15</td>
+</tr>
+<tr>
+<td>test_api_config.APIConfigTests.test_whitespace_does_not_hide_environment_key</td>
+<td>tests/test_api_config.py</td>
+<td>23</td>
+</tr>
+<tr>
+<td>test_api_config.APIConfigTests.test_previous_environment_name_supported</td>
+<td>tests/test_api_config.py</td>
+<td>27</td>
+</tr>
+<tr>
+<td>test_api_config.APIConfigTests.test_saved_file_loaded_in_new_process</td>
+<td>tests/test_api_config.py</td>
+<td>31</td>
+</tr>
+<tr>
+<td>test_conversation.MemoryStoreTests.test_keeps_at_least_three_recent_turns</td>
+<td>tests/test_conversation.py</td>
+<td>30</td>
+</tr>
+<tr>
+<td>test_conversation.MemoryStoreTests.test_configurable_more_turns</td>
+<td>tests/test_conversation.py</td>
+<td>38</td>
+</tr>
+<tr>
+<td>test_conversation.MemoryStoreTests.test_sessions_isolated_reset_and_ttl</td>
+<td>tests/test_conversation.py</td>
+<td>44</td>
+</tr>
+<tr>
+<td>test_conversation.MemoryStoreTests.test_session_limit_and_validation</td>
+<td>tests/test_conversation.py</td>
+<td>55</td>
+</tr>
+<tr>
+<td>test_conversation.MemoryStoreTests.test_turn_summary_keeps_resolved_conditions_not_full_contexts</td>
+<td>tests/test_conversation.py</td>
+<td>64</td>
+</tr>
+<tr>
+<td>test_conversation.ChatFlowTests.test_first_question_skips_condense_and_followups_get_three_turns</td>
+<td>tests/test_conversation.py</td>
+<td>90</td>
+</tr>
+<tr>
+<td>test_conversation.ChatFlowTests.test_history_window_contents</td>
+<td>tests/test_conversation.py</td>
+<td>101</td>
+</tr>
+<tr>
+<td>test_conversation.ChatFlowTests.test_followup_question_is_rewritten_before_routing</td>
+<td>tests/test_conversation.py</td>
+<td>109</td>
+</tr>
+<tr>
+<td>test_conversation.ChatFlowTests.test_clarification_answer_is_connected_to_original_question</td>
+<td>tests/test_conversation.py</td>
+<td>120</td>
+</tr>
+<tr>
+<td>test_conversation.ChatFlowTests.test_ambiguous_region_becomes_clarification_then_followup</td>
+<td>tests/test_conversation.py</td>
+<td>132</td>
+</tr>
+<tr>
+<td>test_conversation.ChatFlowTests.test_errors_are_remembered</td>
+<td>tests/test_conversation.py</td>
+<td>142</td>
+</tr>
+<tr>
+<td>test_conversation.CondenseApiTests.test_no_history_no_api_call</td>
+<td>tests/test_conversation.py</td>
+<td>156</td>
+</tr>
+<tr>
+<td>test_conversation.CondenseApiTests.test_payload_and_followup_result</td>
+<td>tests/test_conversation.py</td>
+<td>160</td>
+</tr>
+<tr>
+<td>test_conversation.CondenseApiTests.test_not_followup_keeps_original</td>
+<td>tests/test_conversation.py</td>
+<td>170</td>
+</tr>
+<tr>
+<td>test_conversation.WebServiceTests.test_session_required_and_reset</td>
+<td>tests/test_conversation.py</td>
+<td>178</td>
+</tr>
+<tr>
+<td>test_coverage.CoverageTests.test_partial_year</td>
+<td>tests/test_coverage.py</td>
+<td>11</td>
+</tr>
+<tr>
+<td>test_coverage.CoverageTests.test_absent_year</td>
+<td>tests/test_coverage.py</td>
+<td>18</td>
+</tr>
+<tr>
+<td>test_coverage.CoverageTests.test_relative_year</td>
+<td>tests/test_coverage.py</td>
+<td>22</td>
+</tr>
+<tr>
+<td>test_coverage.CoverageTests.test_explicit_month_unchanged</td>
+<td>tests/test_coverage.py</td>
+<td>26</td>
+</tr>
+<tr>
+<td>test_coverage.CoverageTests.test_complete_or_partial_year_question_goes_to_rag</td>
+<td>tests/test_coverage.py</td>
+<td>30</td>
+</tr>
+<tr>
+<td>test_coverage.CoverageTests.test_no_invented_months</td>
+<td>tests/test_coverage.py</td>
+<td>37</td>
+</tr>
+<tr>
+<td>test_coverage.CoverageTests.test_precedes_model_rejection</td>
+<td>tests/test_coverage.py</td>
+<td>41</td>
+</tr>
+<tr>
+<td>test_declines.DeclineTests.test_endpoints_missing_and_order</td>
+<td>tests/test_declines.py</td>
+<td>7</td>
+</tr>
+<tr>
+<td>test_embedding.DocumentTests.test_real_csv_document_counts_metadata_and_missing</td>
+<td>tests/test_embedding.py</td>
+<td>14</td>
+</tr>
+<tr>
+<td>test_embedding.DocumentTests.test_api_response_reordering_and_dimensions</td>
+<td>tests/test_embedding.py</td>
+<td>29</td>
+</tr>
+<tr>
+<td>test_embedding.DocumentTests.test_no_key_fails_without_network</td>
+<td>tests/test_embedding.py</td>
+<td>43</td>
+</tr>
+<tr>
+<td>test_embedding.CsvExportTests.test_export_and_bad_csv</td>
+<td>tests/test_embedding.py</td>
+<td>65</td>
+</tr>
+<tr>
+<td>test_fixes.YearOnlyTests.test_compare_with_year_only_uses_that_year</td>
+<td>tests/test_fixes.py</td>
+<td>47</td>
+</tr>
+<tr>
+<td>test_fixes.YearOnlyTests.test_year_range_from_model_used_for_lookup</td>
+<td>tests/test_fixes.py</td>
+<td>54</td>
+</tr>
+<tr>
+<td>test_fixes.YearOnlyTests.test_trend_with_year_only_compares_previous_december</td>
+<td>tests/test_fixes.py</td>
+<td>58</td>
+</tr>
+<tr>
+<td>test_fixes.YearOnlyTests.test_missing_year_is_reported</td>
+<td>tests/test_fixes.py</td>
+<td>62</td>
+</tr>
+<tr>
+<td>test_fixes.NowWordsTests.test_now_word_overrides_model_month</td>
+<td>tests/test_fixes.py</td>
+<td>73</td>
+</tr>
+<tr>
+<td>test_fixes.NowWordsTests.test_now_word_shifts_range_to_latest</td>
+<td>tests/test_fixes.py</td>
+<td>77</td>
+</tr>
+<tr>
+<td>test_fixes.NowWordsTests.test_explicit_year_or_month_wins</td>
+<td>tests/test_fixes.py</td>
+<td>82</td>
+</tr>
+<tr>
+<td>test_fixes.NowWordsTests.test_explain_retrieves_latest_period</td>
+<td>tests/test_fixes.py</td>
+<td>86</td>
+</tr>
+<tr>
+<td>test_fixes.RecentMonthsDefinitionTests.test_profile_and_numeric_path_agree</td>
+<td>tests/test_fixes.py</td>
+<td>96</td>
+</tr>
+<tr>
+<td>test_fixes.RulePrefilterTests.test_duration_is_not_a_year</td>
+<td>tests/test_fixes.py</td>
+<td>108</td>
+</tr>
+<tr>
+<td>test_fixes.RulePrefilterTests.test_recent_ten_years_reaches_model_and_fixes_range</td>
+<td>tests/test_fixes.py</td>
+<td>116</td>
+</tr>
+<tr>
+<td>test_fixes.RulePrefilterTests.test_last_year_change_questions_go_to_router</td>
+<td>tests/test_fixes.py</td>
+<td>121</td>
+</tr>
+<tr>
+<td>test_fixes.RulePrefilterTests.test_last_year_lookup_with_province_and_district</td>
+<td>tests/test_fixes.py</td>
+<td>128</td>
+</tr>
+<tr>
+<td>test_fixes.RulePrefilterTests.test_relative_year_words</td>
+<td>tests/test_fixes.py</td>
+<td>136</td>
+</tr>
+<tr>
+<td>test_fixes.AnswerCheckTests.test_number_issues</td>
+<td>tests/test_fixes.py</td>
+<td>144</td>
+</tr>
+<tr>
+<td>test_fixes.AnswerCheckTests.test_wrong_sign_is_regenerated_once</td>
+<td>tests/test_fixes.py</td>
+<td>152</td>
+</tr>
+<tr>
+<td>test_fixes.AnswerCheckTests.test_still_wrong_gets_warning</td>
+<td>tests/test_fixes.py</td>
+<td>164</td>
+</tr>
+<tr>
+<td>test_fixes.RetrievalAndSchemaTests.test_explain_general_pool_excludes_other_periods</td>
+<td>tests/test_fixes.py</td>
+<td>173</td>
+</tr>
+<tr>
+<td>test_fixes.RetrievalAndSchemaTests.test_top_k_controls_general_pool</td>
+<td>tests/test_fixes.py</td>
+<td>180</td>
+</tr>
+<tr>
+<td>test_fixes.RetrievalAndSchemaTests.test_month_format_validated</td>
+<td>tests/test_fixes.py</td>
+<td>186</td>
+</tr>
+<tr>
+<td>test_fixes.RetrievalAndSchemaTests.test_faq_mentions_memory</td>
+<td>tests/test_fixes.py</td>
+<td>194</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_lookup_keeps_most_specific_region</td>
+<td>tests/test_fixes.py</td>
+<td>204</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_rank_uses_widest_scope</td>
+<td>tests/test_fixes.py</td>
+<td>211</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_rank_scope_from_listed_subregions</td>
+<td>tests/test_fixes.py</td>
+<td>216</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_written_alias_beats_region_group</td>
+<td>tests/test_fixes.py</td>
+<td>225</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_rank_listing_every_province_means_nationwide</td>
+<td>tests/test_fixes.py</td>
+<td>232</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_parent_only_name_prefers_province</td>
+<td>tests/test_fixes.py</td>
+<td>244</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_guessed_parent_becomes_clarification</td>
+<td>tests/test_fixes.py</td>
+<td>250</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_gwangju_district_is_metropolitan_city</td>
+<td>tests/test_fixes.py</td>
+<td>258</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_invented_month_ignored</td>
+<td>tests/test_fixes.py</td>
+<td>265</td>
+</tr>
+<tr>
+<td>test_fixes.RegionNarrowingTests.test_explicit_comparison_with_parent_is_kept</td>
+<td>tests/test_fixes.py</td>
+<td>273</td>
+</tr>
+<tr>
+<td>test_fixes.ModelOutputVarianceTests.test_province_suffix_and_particles</td>
+<td>tests/test_fixes.py</td>
+<td>282</td>
+</tr>
+<tr>
+<td>test_fixes.ModelOutputVarianceTests.test_unresolvable_extra_name_is_skipped</td>
+<td>tests/test_fixes.py</td>
+<td>290</td>
+</tr>
+<tr>
+<td>test_fixes.ModelOutputVarianceTests.test_unwritten_regions_added_by_model_are_dropped</td>
+<td>tests/test_fixes.py</td>
+<td>298</td>
+</tr>
+<tr>
+<td>test_fixes.ModelOutputVarianceTests.test_rank_ignores_listed_candidates_and_dates</td>
+<td>tests/test_fixes.py</td>
+<td>306</td>
+</tr>
+<tr>
+<td>test_fixes.KeyboardTests.test_conversion</td>
+<td>tests/test_fixes.py</td>
+<td>317</td>
+</tr>
+<tr>
+<td>test_fixes.KeyboardTests.test_ask_uses_converted_question</td>
+<td>tests/test_fixes.py</td>
+<td>323</td>
+</tr>
+<tr>
+<td>test_gwangju.GwangjuTests.test_ambiguous_variants</td>
+<td>tests/test_gwangju.py</td>
+<td>6</td>
+</tr>
+<tr>
+<td>test_gwangju.GwangjuTests.test_explicit_regions</td>
+<td>tests/test_gwangju.py</td>
+<td>10</td>
+</tr>
+<tr>
+<td>test_period_queries.PeriodQueriesTests.test_concept_is_narrow</td>
+<td>tests/test_period_queries.py</td>
+<td>11</td>
+</tr>
+<tr>
+<td>test_period_queries.PeriodQueriesTests.test_seoul_mean_from_raw_csv</td>
+<td>tests/test_period_queries.py</td>
+<td>16</td>
+</tr>
+<tr>
+<td>test_period_queries.PeriodQueriesTests.test_negative_population_independently</td>
+<td>tests/test_period_queries.py</td>
+<td>26</td>
+</tr>
+<tr>
+<td>test_period_queries.PeriodQueriesTests.test_followup_keeps_whole_list</td>
+<td>tests/test_period_queries.py</td>
+<td>39</td>
+</tr>
+<tr>
+<td>test_period_queries.PeriodQueriesTests.test_correction_recomputes_annual_mean</td>
+<td>tests/test_period_queries.py</td>
+<td>48</td>
+</tr>
+<tr>
+<td>test_period_queries.PeriodQueriesTests.test_partial_year_not_claimed_complete</td>
+<td>tests/test_period_queries.py</td>
+<td>55</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.KnowledgeCorpusTests.test_document_kinds_and_counts</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>47</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.KnowledgeCorpusTests.test_profile_numbers_match_raw_csv</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>57</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.KnowledgeCorpusTests.test_annual_and_monthly_movers_match_raw_csv</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>73</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.KnowledgeCorpusTests.test_partial_year_labelled</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>86</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.KnowledgeCorpusTests.test_guides_split_by_heading</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>91</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.KnowledgeIndexTests.test_build_reuse_validate_and_change_detection</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>98</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.KnowledgeIndexTests.test_retrieve_pools_and_threshold</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>122</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_explain_uses_retrieved_knowledge_only</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>147</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_explain_market_question_defaults_to_latest_month</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>157</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_explain_year_question</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>164</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_explain_without_evidence_skips_generation</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>168</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_numeric_lookup_direct_document_plus_profile</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>174</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_numeric_past_month_has_no_latest_profile</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>183</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_rank_adds_market_summary_of_same_month</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>187</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_recent_months_fixed_by_code</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>193</td>
+</tr>
+<tr>
+<td>test_rag_knowledge.RouterTests.test_generate_answer_payload_marks_kinds</td>
+<td>tests/test_rag_knowledge.py</td>
+<td>203</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_default_csv_and_working_directory</td>
+<td>tests/test_regressions.py</td>
+<td>31</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_prices_retain_small_remainders_and_zero</td>
+<td>tests/test_regressions.py</td>
+<td>39</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_region_alias_and_ambiguity</td>
+<td>tests/test_regressions.py</td>
+<td>47</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_rank_full_population_excludes_missing_and_other_levels</td>
+<td>tests/test_regressions.py</td>
+<td>53</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_real_rank_scope</td>
+<td>tests/test_regressions.py</td>
+<td>70</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_compare_has_both_regions_computed_values_and_sources</td>
+<td>tests/test_regressions.py</td>
+<td>84</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_trend_range_filters_context_and_uses_cli_unit</td>
+<td>tests/test_regressions.py</td>
+<td>92</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_missing_and_invalid_periods_do_not_get_invented</td>
+<td>tests/test_regressions.py</td>
+<td>99</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_clarification_skips_generation</td>
+<td>tests/test_regressions.py</td>
+<td>109</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_stale_index_checked_before_api</td>
+<td>tests/test_regressions.py</td>
+<td>114</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_external_key_file_optional_and_diagnostics_do_not_reveal_key</td>
+<td>tests/test_regressions.py</td>
+<td>119</td>
+</tr>
+<tr>
+<td>test_regressions.RegressionTests.test_sdk_routes_analysis_and_context_to_real_api_methods</td>
+<td>tests/test_regressions.py</td>
+<td>127</td>
+</tr>
+<tr>
+<td>test_reported_dialogue.ReportedDialogueTests.test_concept_does_not_inherit_positive_rate</td>
+<td>tests/test_reported_dialogue.py</td>
+<td>9</td>
+</tr>
+<tr>
+<td>test_reported_dialogue.ReportedDialogueTests.test_annual_minimum_and_followup</td>
+<td>tests/test_reported_dialogue.py</td>
+<td>16</td>
+</tr>
+<tr>
+<td>test_review_20261012.ReviewFixTests.test_named_region_abbreviation_qualifier_and_ambiguity</td>
+<td>tests/test_review_20261012.py</td>
+<td>37</td>
+</tr>
+<tr>
+<td>test_review_20261012.ReviewFixTests.test_yearly_average_with_abbreviated_region</td>
+<td>tests/test_review_20261012.py</td>
+<td>49</td>
+</tr>
+<tr>
+<td>test_review_20261012.ReviewFixTests.test_recent_years_average_uses_n_times_12_months</td>
+<td>tests/test_review_20261012.py</td>
+<td>56</td>
+</tr>
+<tr>
+<td>test_review_20261012.ReviewFixTests.test_parent_written_without_suffix_is_not_guess</td>
+<td>tests/test_review_20261012.py</td>
+<td>65</td>
+</tr>
+<tr>
+<td>test_review_20261012.ReviewFixTests.test_followup_nationwide_ranking_does_not_inherit_previous_region</td>
+<td>tests/test_review_20261012.py</td>
+<td>72</td>
+</tr>
+<tr>
+<td>test_review_20261012.ReviewFixTests.test_years_ago_is_fixed_by_code_not_model</td>
+<td>tests/test_review_20261012.py</td>
+<td>85</td>
+</tr>
+<tr>
+<td>test_review_20261012.ReviewFixTests.test_years_ago_comparison_is_range_to_latest</td>
+<td>tests/test_review_20261012.py</td>
+<td>95</td>
+</tr>
+<tr>
+<td>test_vector_store.VectorStoreTests.test_cosine_order_persistence_and_empty_filter</td>
+<td>tests/test_vector_store.py</td>
+<td>8</td>
+</tr>
+<tr>
+<td>test_vector_store.VectorStoreTests.test_memory_cache_refreshes_after_upsert</td>
+<td>tests/test_vector_store.py</td>
+<td>24</td>
+</tr>
+<tr>
+<td>test_web.ServiceTests.test_route_names_for_rule_and_clarify_answers</td>
+<td>tests/test_web.py</td>
+<td>30</td>
+</tr>
+<tr>
+<td>test_web.ServiceTests.test_coverage_note_from_data</td>
+<td>tests/test_web.py</td>
+<td>39</td>
+</tr>
+<tr>
+<td>test_web.ServiceTests.test_status_reports_period_even_when_index_is_stale</td>
+<td>tests/test_web.py</td>
+<td>45</td>
+</tr>
+<tr>
+<td>test_web.HistoryTests.test_route_label_and_project_in_view</td>
+<td>tests/test_web.py</td>
+<td>57</td>
+</tr>
+<tr>
+<td>test_web.ServerTests.test_history_page_style_allowed_by_csp</td>
+<td>tests/test_web.py</td>
+<td>84</td>
+</tr>
+<tr>
+<td>test_web.ServerTests.test_static_page_keeps_default_csp</td>
+<td>tests/test_web.py</td>
+<td>92</td>
+</tr>
+<tr>
+<td>test_web.ServerTests.test_api_failure_logged_with_type_and_elapsed</td>
+<td>tests/test_web.py</td>
+<td>97</td>
+</tr>
+<tr>
+<td>test_web.ServerTests.test_foreign_host_rejected</td>
+<td>tests/test_web.py</td>
+<td>111</td>
+</tr>
+<tr>
+<td>test_year_query.LastYearTests.test_max_uses_previous_year_only</td>
+<td>tests/test_year_query.py</td>
+<td>13</td>
+</tr>
+<tr>
+<td>test_year_query.LastYearTests.test_unavailable_month_not_replaced</td>
+<td>tests/test_year_query.py</td>
+<td>22</td>
+</tr>
+<tr>
+<td>test_year_query.LastYearTests.test_specific_region</td>
+<td>tests/test_year_query.py</td>
+<td>27</td>
+</tr>
+<tr>
+<td>test_year_query.LastYearTests.test_full_2025_now_available</td>
+<td>tests/test_year_query.py</td>
+<td>33</td>
+</tr>
+</tbody>
+</table>
+</section><section id="doc-14"><div class="meta">04_시험/테스트_케이스.md</div><h1>테스트 케이스 명세서</h1>
+<p>문서 ID: QA-02 / 버전: 1.0 / 기준일: 2026-10-12</p>
+<h2>실행 기준</h2>
+<p>TC는 기존 자동시험에서 확인한 대표 케이스이며 MAN은 별도 수동시험 계획이다. TC의 실제 결과는 2026-10-12 실행 로그에서 해당 시험명이 ok인 것을 확인한 판정이다. 모든 자동시험 125건의 식별자는 <code>자동시험_목록.md</code>를 참조한다. 대표 케이스의 설명은 실제 테스트 소스의 입력과 assertion에 한정한다.</p>
+<p>공통 사전조건: C:\BuBot, 프로젝트 가상환경, data/new_prices.csv, tests/rag_fixtures.py. 전체 실행은 <code>.venv/Scripts/python.exe -m unittest discover -s tests -v</code>이다. mock 케이스는 실제 API가 아닌 지정 응답을 이용한다. 단일 재현 시 예를 들어 <code>-m unittest discover -s tests -p test_period_queries.py -v</code>를 사용한다.</p>
+<h2>TC-01 원본 문서와 가격 데이터</h2>
+<p>요구사항: REQ-01, REQ-09 / 우선순위: 높음 / 방식: 원본 CSV 자동시험</p>
+<ul>
+<li>사전조건: 활성 CSV가 기준정보에 기록한 버전이다.</li>
+<li>입력·절차: read_corpus로 원본을 읽고 첫 문서, 전체 문서 수, 결측 문서를 확인한다.</li>
+<li>기대결과: 245지역·176개월·43,365문서·결측 4,126건. 첫 가격 metadata 264474천원, 원본 4행, 해시 일치. 결측 문서에 가격 필드 없음.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_embedding.DocumentTests.test_real_csv_document_counts_metadata_and_missing</code>.</li>
+</ul>
+<h2>TC-02 지역 비교</h2>
+<p>요구사항: REQ-02 / 우선순위: 높음 / 방식: 모델 mock + 원본 계산</p>
+<ul>
+<li>사전조건: test_regressions의 원본 corpus 및 mock 분석 응답.</li>
+<li>입력·절차: 비교 의도로 run_ask를 실행하고 두 지역 문서·facts·sources를 대조한다.</li>
+<li>기대결과: 두 지역 모두 근거에 포함되고 계산 차이와 출처가 반환된다.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_regressions.RegressionTests.test_compare_has_both_regions_computed_values_and_sources</code>.</li>
+</ul>
+<h2>TC-03 기간 추이와 표시 단위</h2>
+<p>요구사항: REQ-03 / 우선순위: 높음 / 방식: 모델 mock</p>
+<ul>
+<li>사전조건: test_regressions의 고정 분석 결과 및 원본.</li>
+<li>입력·절차: 시작·종료 월이 있는 추이 질의에 단위를 지정한다. contexts의 기간과 전달 단위를 검사한다.</li>
+<li>기대결과: 기간 범위와 지정 단위가 유지된다. 별도 원본 계산 시험과 함께 사용한다.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_regressions.RegressionTests.test_trend_range_filters_context_and_uses_cli_unit</code>.</li>
+</ul>
+<h2>TC-04 전체 모집단 순위</h2>
+<p>요구사항: REQ-04 / 우선순위: 높음 / 방식: 원본 계산</p>
+<ul>
+<li>사전조건: 순위용 corpus와 선택 계층.</li>
+<li>입력·절차: 최고·최저 집계 결과를 동일 계층의 전체 유효 후보와 대조한다.</li>
+<li>기대결과: 결측과 다른 계층을 제외하며 검색 상위 일부만으로 순위를 계산하지 않는다.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_regressions.RegressionTests.test_rank_full_population_excludes_missing_and_other_levels</code>.</li>
+</ul>
+<h2>TC-05 연간 평균</h2>
+<p>요구사항: REQ-05 / 우선순위: 높음 / 방식: CSV 독립 계산</p>
+<ul>
+<li>사전조건: CSV의 서울 2017년·2025년 12개월 값.</li>
+<li>입력·절차: CSV에서 Decimal로 직접 합산해 12로 나누고 aggregate_query의 mean_thousand와 비교한다.</li>
+<li>기대결과: 독립 평균과 정확히 일치, 12월 값 하나와 다름, 근거 문서 12개.</li>
+<li>실제결과: 두 연도 assertion 통과 / PASS.</li>
+<li>증적: <code>test_period_queries.PeriodQueriesTests.test_seoul_mean_from_raw_csv</code>.</li>
+</ul>
+<h2>TC-06 하락 지역과 후속 목록</h2>
+<p>요구사항: REQ-05, REQ-07 / 우선순위: 높음 / 방식: CSV 독립 계산·규칙 경로</p>
+<ul>
+<li>사전조건: 2022-08과 2026-08 원본 값, 새 ConversationMemory.</li>
+<li>입력·절차: “4년간 데이터 중 변동율이 음수로 가는 지역”을 조회하고 “그 지역은?”을 이어서 묻는다.</li>
+<li>기대결과: 하락·유효·제외 개수가 원본 계산과 일치, 후속 facts가 원 결과와 같고 6개를 초과, 후속 재구성 API 미호출.</li>
+<li>실제결과: 두 시험 assertion 통과 / PASS.</li>
+<li>증적: <code>test_period_queries.PeriodQueriesTests.test_negative_population_independently</code>, <code>test_followup_keeps_whole_list</code>.</li>
+</ul>
+<h2>TC-07 지역 모호성 확인</h2>
+<p>요구사항: REQ-06, REQ-07 / 우선순위: 높음 / 방식: 대화 mock</p>
+<ul>
+<li>사전조건: 새 세션, 후속 재구성 mock이 광주광역시 2026-08을 반환.</li>
+<li>입력·절차: “광주 2026년 8월 가격” 다음 “광주광역시”를 전송한다.</li>
+<li>기대결과: 첫 턴 질문 분석 미호출 및 확인 상태 저장, 후속 턴에 원래 기간과 명시 지역 적용.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_conversation.ChatFlowTests.test_clarification_answer_is_connected_to_original_question</code>.</li>
+</ul>
+<h2>TC-08 없는 기간</h2>
+<p>요구사항: REQ-06 / 우선순위: 높음 / 방식: 고정 질의·원본</p>
+<ul>
+<li>사전조건: 원본 보유 월과 year_query 시험 입력.</li>
+<li>입력·절차: 없는 월을 요청하고 다른 월 값으로 대체되는지 검사한다.</li>
+<li>기대결과: 없는 월을 임의의 보유 월로 바꾸지 않는다.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_year_query.LastYearTests.test_unavailable_month_not_replaced</code>.</li>
+</ul>
+<h2>TC-09 세션 격리와 만료</h2>
+<p>요구사항: REQ-07 / 우선순위: 높음 / 방식: 가짜 시계 기반 단위시험</p>
+<ul>
+<li>사전조건: turns=3, ttl=100, Clock.</li>
+<li>입력·절차: 서로 다른 두 세션에 a·b를 넣고 첫 세션을 초기화한다. 시간을 101로 이동한다.</li>
+<li>기대결과: 초기화한 세션은 빈 목록, 다른 세션은 만료 후 빈 목록. 턴 상한 시험에서는 5개 입력 후 q2·q3·q4 유지.</li>
+<li>실제결과: 두 시험 assertion 통과 / PASS.</li>
+<li>증적: <code>test_conversation.MemoryStoreTests.test_sessions_isolated_reset_and_ttl</code>, <code>test_keeps_at_least_three_recent_turns</code>.</li>
+</ul>
+<h2>TC-10 설명 근거 없음</h2>
+<p>요구사항: REQ-08 / 우선순위: 높음 / 방식: 검색 mock</p>
+<ul>
+<li>사전조건: 지식 검색 결과가 없는 explain 경로.</li>
+<li>입력·절차: 설명 질의를 실행하고 답변 생성 함수 호출 여부를 확인한다.</li>
+<li>기대결과: 근거 없음 안내, 생성 API 생략.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_rag_knowledge.RouterTests.test_explain_without_evidence_skips_generation</code>.</li>
+</ul>
+<h2>TC-11 색인 변경 감지</h2>
+<p>요구사항: REQ-10 / 우선순위: 높음 / 방식: 임시 SQLite·가짜 임베딩</p>
+<ul>
+<li>사전조건: 임시 디렉터리, 오프라인 embedder, 고정 임베딩 spec.</li>
+<li>입력·절차: 색인 생성·재사용·검증 후 지식 입력 변경에 대한 정합성을 검사한다.</li>
+<li>기대결과: 동일 입력 재사용, 변경 감지. 오래된 색인 질의 시험은 API 호출 전에 중단.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_rag_knowledge.KnowledgeIndexTests.test_build_reuse_validate_and_change_detection</code>, <code>test_regressions.RegressionTests.test_stale_index_checked_before_api</code>.</li>
+</ul>
+<h2>TC-12 웹 오류 기록</h2>
+<p>요구사항: REQ-11 / 우선순위: 보통 / 방식: 로컬 HTTP·서비스 예외 mock</p>
+<ul>
+<li>사전조건: 임시 로컬 테스트 서버, API 처리 예외 주입.</li>
+<li>입력·절차: /api/chat 요청을 보내 오류 유형과 소요시간·기록을 확인한다.</li>
+<li>기대결과: 실패 응답에도 오류 종류와 소요시간을 추적할 수 있다.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_web.ServerTests.test_api_failure_logged_with_type_and_elapsed</code>.</li>
+</ul>
+<h2>TC-13 외부 Host와 잘못된 세션</h2>
+<p>요구사항: REQ-12 / 우선순위: 높음 / 방식: 로컬 HTTP·단위시험</p>
+<ul>
+<li>사전조건: 테스트 서버, ConversationMemory.</li>
+<li>입력·절차: 외부 Host 요청 및 세션 None·short·../../etc·65자 문자열을 전달한다.</li>
+<li>기대결과: 외부 Host는 403, 세션 형식 오류는 ValueError.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_web.ServerTests.test_foreign_host_rejected</code>, <code>test_conversation.MemoryStoreTests.test_session_limit_and_validation</code>.</li>
+</ul>
+<h2>TC-14 변동률 오류 재생성</h2>
+<p>요구사항: REQ-13 / 우선순위: 높음 / 방식: 답변 mock</p>
+<ul>
+<li>사전조건: 원본 근거와 부호가 다른 퍼센트 답변을 반환하는 mock.</li>
+<li>입력·절차: 최초 답변이 불일치하도록 하고 재생성 응답을 확인한다. 두 번째도 틀리는 경우를 별도로 실행한다.</li>
+<li>기대결과: 한 번만 재생성. 지속 오류 시 warning 판정과 수치 확인 안내.</li>
+<li>실제결과: 두 시험 assertion 통과 / PASS.</li>
+<li>증적: <code>test_fixes.AnswerCheckTests.test_wrong_sign_is_regenerated_once</code>, <code>test_still_wrong_gets_warning</code>.</li>
+</ul>
+<h2>TC-15 한영 입력 보정</h2>
+<p>요구사항: REQ-14 / 우선순위: 보통 / 방식: 변환 및 질의 mock</p>
+<ul>
+<li>사전조건: test_fixes의 키보드 변환 사례.</li>
+<li>입력·절차: 한글 자판을 영문으로 입력한 질문을 변환하고 ask에 전달한다.</li>
+<li>기대결과: 변환 결과로 질문을 처리한다. 모든 영문 문장을 한글로 바꾸는 기능으로 해석하지 않는다.</li>
+<li>실제결과: 해당 assertion 통과 / PASS.</li>
+<li>증적: <code>test_fixes.KeyboardTests.test_conversion</code>, <code>test_ask_uses_converted_question</code>.</li>
+</ul>
+<h2>수동 인수 시험 계획</h2>
+<p>공통 사전조건: 로컬 웹 서버, 사용할 API 자격증명, 현재 데이터와 일치하는 지식 색인. 실제 호출 비용이 발생할 수 있다. 실행자·실행일은 실행 후 기입한다.</p>
+<table>
+<thead>
+<tr>
+<th>ID·요구사항</th>
+<th>입력과 절차</th>
+<th>기대결과</th>
+<th>실제결과·판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MAN-01 / REQ-01·09</td>
+<td>서울 2026년 8월 가격 질문 → facts·출처 열기 → CSV 해당 셀 대조</td>
+<td>원본 값 및 지역·월·출처 일치</td>
+<td>미실행</td>
+</tr>
+<tr>
+<td>MAN-02 / REQ-07</td>
+<td>MAN-01 후 부산은? → 새 대화 → 다시 부산은?</td>
+<td>첫 후속에 기존 기간 반영, 초기화 후 이전 대화 미사용</td>
+<td>미실행</td>
+</tr>
+<tr>
+<td>MAN-03 / REQ-08·13</td>
+<td>용어·시장 설명 질문 각 1건 → 근거 문서와 모든 수치 대조</td>
+<td>근거 내 설명, 근거 밖 단정 없음, 검증 경고가 있으면 표시</td>
+<td>미실행</td>
+</tr>
+<tr>
+<td>MAN-04 / REQ-11·12</td>
+<td>질문 전송 → 기록 화면 → 저장 기록 찾기 → 좁은 창에서 상세 열기</td>
+<td>질문·답변·시간 추적 가능, 표·출처·오류 안내 읽기 가능</td>
+<td>미실행</td>
+</tr>
+</tbody>
+</table>
+<p>수동 케이스는 자유 생성 답변의 실제 값과 근거를 별도로 기록해야 한다. 자동 TC가 PASS라는 이유로 MAN을 PASS로 바꾸지 않는다.</p>
+<h2>TC-16 최신 수정 회귀</h2>
+<p>요구사항: REQ-04·05·06·07 / 우선순위: 높음 / 방식: 원본·지역 파서·모델 mock</p>
+<ul>
+<li>사전조건: tests/test_review_20261012.py, 활성 corpus와 오프라인 fixture.</li>
+<li>입력·절차: 강남·포항 남구·중구의 지역 판정, 강남 2025년 평균, 서울 최근 3년 평균, 서울 질문 뒤 시도 최저 순위를 각각 실행한다.</li>
+<li>기대결과: 축약명 정확 매칭, 중구 모호성 확인, 평균 기간 36개월, 전국 순위에 서울 조건을 강제하지 않음. 일반 후속 질문은 지역 유지.</li>
+<li>실제결과: 최종 실행 로그의 ReviewFixTests 5개 모두 통과 / PASS.</li>
+<li>증적: test_review_20261012.ReviewFixTests의 5개 시험 및 unittest_20261012_final.txt.</li>
+</ul>
+</section><section id="doc-15"><div class="meta">06_양식/공통_산출물_양식.md</div><h1>공통 산출물 작성 양식</h1>
+<p>문서명: / 문서 ID: / 버전: / 작성일: / 작성자: / 검토자: / 상태:</p>
+<h2>목적과 범위</h2>
+<p>누가 어떤 판단에 사용하는지, 포함하는 기능과 제외 범위를 2~3문장으로 작성한다.</p>
+<h2>요구사항 양식</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>사용자 요구</th>
+<th>우선순위</th>
+<th>수용 기준</th>
+<th>구현·설계 연결</th>
+<th>상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REQ-xx</td>
+<td>사용자가 할 수 있는 일</td>
+<td>높음·보통·낮음</td>
+<td>관측 가능한 결과</td>
+<td>CMP / 코드</td>
+<td>검토 중</td>
+</tr>
+</tbody>
+</table>
+<h2>클래스 양식</h2>
+<table>
+<thead>
+<tr>
+<th>클래스·파일</th>
+<th>책임</th>
+<th>속성과 타입</th>
+<th>메서드 입력·출력</th>
+<th>관계</th>
+<th>예외·제약</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>클래스명</td>
+<td>한 가지 핵심 책임</td>
+<td>실제 코드 기준</td>
+<td>실제 코드 기준</td>
+<td>상속·참조·포함</td>
+<td>경계 조건</td>
+</tr>
+</tbody>
+</table>
+<h2>컴포넌트 양식</h2>
+<table>
+<thead>
+<tr>
+<th>ID·이름</th>
+<th>책임</th>
+<th>입력</th>
+<th>출력</th>
+<th>의존 컴포넌트</th>
+<th>오류 처리</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CMP-xx</td>
+<td>기능 경계</td>
+<td>데이터·호출</td>
+<td>결과</td>
+<td>CMP-yy</td>
+<td>실패 시 동작</td>
+</tr>
+</tbody>
+</table>
+<h2>테스트 케이스 양식</h2>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>작성 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ID·요구사항</td>
+<td>TC-xx / REQ-xx</td>
+</tr>
+<tr>
+<td>제목·우선순위</td>
+<td>무엇을 확인하는지</td>
+</tr>
+<tr>
+<td>사전조건·데이터</td>
+<td>실행 환경·원본·mock 여부</td>
+</tr>
+<tr>
+<td>절차</td>
+<td>1. 입력 2. 실행 3. 확인</td>
+</tr>
+<tr>
+<td>기대결과</td>
+<td>값·상태·화면·호출 여부</td>
+</tr>
+<tr>
+<td>실제결과</td>
+<td>실제 관측값, 실행 전에는 미실행</td>
+</tr>
+<tr>
+<td>판정·증적</td>
+<td>PASS / FAIL / 차단 / 미실행, 로그 경로</td>
+</tr>
+<tr>
+<td>실행일·실행자</td>
+<td>실행 시 기입</td>
+</tr>
+</tbody>
+</table>
+<h2>변경 이력</h2>
+<table>
+<thead>
+<tr>
+<th>버전</th>
+<th>날짜</th>
+<th>변경 내용</th>
+<th>검토자</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>작성일</td>
+<td>초안</td>
+<td>검토 시 기입</td>
+</tr>
+</tbody>
+</table>
+</section></main><script>document.querySelector("#q").addEventListener("input",function(){const q=this.value.toLowerCase();document.querySelectorAll("section").forEach(s=>{s.hidden=!s.textContent.toLowerCase().includes(q)});document.querySelectorAll("nav a").forEach(a=>{a.hidden=document.querySelector(a.getAttribute("href")).hidden})});</script></html>

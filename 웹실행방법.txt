@@ -1,0 +1,50 @@
+프로젝트: 부동산 평균 매매가 조회 AI 개발
+BuBot 테스트 웹페이지
+
+실행 (PowerShell):
+cd C:\BuBot
+.\.venv\Scripts\python.exe web_main.py
+
+브라우저: http://127.0.0.1:8000
+종료: 실행 터미널에서 Ctrl+C
+다른 포트: .\.venv\Scripts\python.exe web_main.py --port 8001
+
+기존 gpt_api.py의 API 설정과 storage 색인을 그대로 사용합니다.
+질문 전송 시 실제 GPT/임베딩 API가 호출되어 사용 비용이 발생합니다.
+화면의 키 인식 표시는 인증 성공 여부가 아닙니다.
+최근 질문·답변 3개를 기억합니다. "서초는?", "그럼 작년이랑 비교하면?"처럼 이어서 질문할 수 있습니다.
+이전 대화를 반영한 경우 답변 위에 해석한 질문이 표시됩니다. '새 대화' 또는 새로고침 시 기억이 초기화됩니다.
+2026-10-08 RAG 전환 후 처음에는 main.py embed 로 지식 색인을 만들어야 합니다. 화면 상단에 필요한 조치가 표시됩니다.
+답변 아래에 처리 경로와 검색된 지식 문서(거리 값)가 표시됩니다.
+
+파일 구분
+web_main.py: 실행 진입점
+bubot/web/server.py: 로컬 HTTP 서버 및 라우팅
+bubot/web/service.py: 기존 RAG 연결 및 응답 변환
+web/app.js: 화면 조립과 요청 상태
+web/api.js: 서버 통신
+web/components/composer.js: 질문 입력과 단위 선택
+web/components/message.js: 답변/계산값/출처 표시
+web/components/suggestions.js: 예시 질문
+web/components/status.js: 설정 상태 표시
+web/styles.css: 화면 스타일
+
+로컬 테스트 용도입니다. 서버는 127.0.0.1에서만 수신합니다.
+기존 CLI는 main.py로 계속 사용할 수 있습니다.
+
+테스트 기록: 테스트기록 폴더에 질문별 TXT와 전체기록.html 자동 저장. 원본 하위 폴더의 JSON은 웹 뷰어용입니다. 예전 SQLite 기록(web_history.sqlite3)은 이관을 마쳐 미사용_보관/storage 에 보관합니다.
+화면의 저장된 테스트 기록에서 최근 100건 조회 및 전체 JSON 다운로드 가능.
+기능 추가 이전 질문은 저장되지 않았으므로 복원할 수 없습니다.
+
+직접 읽기: C:\BuBot\테스트기록\전체기록.html 더블클릭 또는 http://127.0.0.1:8000/history
+
+2026-10-08 갱신: 활성 원본은 data/new_prices.csv입니다. 보유 기간은 2012-01~2026-08이며, 지역별 결측은 있습니다.
+
+2026-10-08 웹 점검 반영
+- 화면의 조회 가능 기간·결측 지역 안내·출처·기억 개수는 /api/status가 원본 CSV와 설정에서 읽어 표시합니다 (데이터 갱신 시 HTML 수정 불필요).
+- 프로젝트명(부동산 평균 매매가 조회 AI 개발)은 bubot/config.py PROJECT_NAME 하나로 관리합니다. 챗봇 이름은 BuBot 그대로입니다.
+- 답변 아래에 처리 시간(전체·단계별)을 표시합니다.
+- 규칙 기반 답변(작년·연도 범위·하락 지역 집계 등)과 확인 질문에도 처리 경로가 표시됩니다 (rule / clarify).
+- /history 페이지 스타일이 보안 정책(CSP)에 막히던 문제를 고쳤습니다.
+- 답변 생성 실패(502) 시 오류 종류를 서버 콘솔과 테스트 기록에 남깁니다. 화면에는 상세를 보내지 않습니다.
+- 관련 테스트: tests/test_web.py

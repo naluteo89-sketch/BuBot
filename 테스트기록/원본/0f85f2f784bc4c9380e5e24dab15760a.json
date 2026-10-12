@@ -1,0 +1,12 @@
+﻿{
+  "id": "0f85f2f784bc4c9380e5e24dab15760a",
+  "created_at": "2026-10-08T17:14:17.416558+09:00",
+  "question": "서울 말고 다른지역들은?",
+  "unit": "",
+  "status": "error",
+  "elapsed_seconds": 3.643,
+  "result": {
+    "error": "한 번에 5개 지역까지 조회하세요.",
+    "elapsed_seconds": 3.643
+  }
+}

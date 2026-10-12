@@ -1,0 +1,25 @@
+﻿{
+  "id": "17e26abe9dbe48c88dc5dbe95121b9db",
+  "created_at": "2026-10-08T15:40:31.721681+09:00",
+  "question": "7년전 3억 이상의 거래 매물들",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 3.925,
+  "result": {
+    "answer": "해당 질문은 특정 거래 매물에 대한 정보를 요청하고 있으며, 그에 대한 데이터를 제공할 수 없습니다.",
+    "facts": [],
+    "sources": [],
+    "standalone_question": "2012년 부산에서 3억 이상의 아파트 거래 매물들은 어떤 것이 있었나요?",
+    "followup": true,
+    "input_converted": false,
+    "memory_turns": 3,
+    "memory_used": 3,
+    "timings": {
+      "질문재구성": 1.495,
+      "질문분석": 2.411
+    },
+    "route": "clarify",
+    "retrieved": [],
+    "elapsed_seconds": 3.925
+  }
+}

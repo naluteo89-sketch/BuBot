@@ -1,0 +1,25 @@
+﻿{
+  "id": "e88ed7bd8804490d82c1a2fa83b04032",
+  "created_at": "2026-10-08T16:45:45.818008+09:00",
+  "question": "왜 매매 기록은 없다고 한거야?",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 3.33,
+  "result": {
+    "answer": "2025년도에 대한 기록이 없는 이유는 데이터 제공 체계와 시점에 따라 결정되며, 특정 지역의 평균 매매가 데이터가 수집되지 않았을 수 있습니다.",
+    "facts": [],
+    "sources": [],
+    "standalone_question": "왜 2025년도 평균 매매가에 대한 거래 기록이 없다고 했나요?",
+    "followup": true,
+    "input_converted": false,
+    "memory_turns": 3,
+    "memory_used": 3,
+    "timings": {
+      "질문재구성": 1.12,
+      "질문분석": 2.188
+    },
+    "route": "clarify",
+    "retrieved": [],
+    "elapsed_seconds": 3.33
+  }
+}

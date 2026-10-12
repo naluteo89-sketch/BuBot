@@ -1,0 +1,11 @@
+﻿{
+  "id": "d76765b0a8324d82b1fd0315b0601e2a",
+  "created_at": "2026-10-08T13:27:44.949593+09:00",
+  "question": "25년도 데이터 확인",
+  "unit": "",
+  "status": "error",
+  "elapsed_seconds": 0.061,
+  "result": {
+    "error": "CSV·문서 본문·임베딩 설정이 변경되었습니다. embed를 다시 실행하세요."
+  }
+}

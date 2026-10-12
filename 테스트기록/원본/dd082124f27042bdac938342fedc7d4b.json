@@ -1,0 +1,12 @@
+﻿{
+  "id": "dd082124f27042bdac938342fedc7d4b",
+  "created_at": "2026-10-08T16:11:34.574860+09:00",
+  "question": "그럼 오히려 감소한 곳을 찾아줘?",
+  "unit": "",
+  "status": "error",
+  "elapsed_seconds": 4.218,
+  "result": {
+    "error": "한 번에 5개 지역까지 조회하세요.",
+    "elapsed_seconds": 4.218
+  }
+}

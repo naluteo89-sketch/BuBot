@@ -1,0 +1,25 @@
+﻿{
+  "id": "23c54715fc074f83bc987a3598a346da",
+  "created_at": "2026-10-12T09:53:29.316833+09:00",
+  "question": "현재 년도는 2026년도야",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 2.251,
+  "result": {
+    "answer": "원본에 2026년 월평균 매매가격 자료가 있습니다. 개별 거래 기록은 없습니다. 조회할 지역과 필요한 계산(월별 가격·기간 평균·변동률)을 확인해주세요.",
+    "facts": [],
+    "sources": [],
+    "standalone_question": "현재 년도는 2026년도야",
+    "followup": false,
+    "input_converted": false,
+    "memory_turns": 3,
+    "memory_used": 3,
+    "timings": {
+      "질문재구성": 0.809,
+      "질문분석": 1.423
+    },
+    "route": "clarify",
+    "retrieved": [],
+    "elapsed_seconds": 2.251
+  }
+}

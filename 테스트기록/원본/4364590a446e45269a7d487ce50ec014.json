@@ -1,0 +1,25 @@
+﻿{
+  "id": "4364590a446e45269a7d487ce50ec014",
+  "created_at": "2026-10-08T15:40:46.720689+09:00",
+  "question": "7년전 3억 이상의 지역",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 3.825,
+  "result": {
+    "answer": "해당 질문은 특정 거래 매물에 대한 요청으로, CSV 데이터와 관련된 정보가 아닙니다.",
+    "facts": [],
+    "sources": [],
+    "standalone_question": "2012년 부산에서 3억 이상의 아파트 거래 매물들은 어떤 것이 있었나요?",
+    "followup": true,
+    "input_converted": false,
+    "memory_turns": 3,
+    "memory_used": 3,
+    "timings": {
+      "질문재구성": 1.383,
+      "질문분석": 2.424
+    },
+    "route": "clarify",
+    "retrieved": [],
+    "elapsed_seconds": 3.825
+  }
+}

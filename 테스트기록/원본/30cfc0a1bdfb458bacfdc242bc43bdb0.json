@@ -1,0 +1,13 @@
+﻿{
+  "id": "30cfc0a1bdfb458bacfdc242bc43bdb0",
+  "created_at": "2026-10-08T13:45:14.524571+09:00",
+  "question": "서울 2006년 6월부터 8월까지 추이와 변동률",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 4.537,
+  "result": {
+    "answer": "해당 기간의 아파트 평균매매가격 데이터가 없습니다. 최근 데이터로 질문해 주시기 바랍니다.",
+    "facts": [],
+    "sources": []
+  }
+}

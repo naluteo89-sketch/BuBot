@@ -1,0 +1,13 @@
+﻿{
+  "id": "363e4722c7534c74a645169a91cd873b",
+  "created_at": "2026-10-08T10:55:58+09:00",
+  "question": "ㅇ",
+  "unit": "",
+  "status": "success",
+  "elapsed_seconds": 3.791,
+  "result": {
+    "answer": "질문이 명확하지 않습니다. 구체적인 지역, 기간 또는 필요한 정보를 추가해 주세요.",
+    "facts": [],
+    "sources": []
+  }
+}
