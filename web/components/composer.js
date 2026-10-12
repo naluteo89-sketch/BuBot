@@ -1,8 +1,10 @@
-export function composer(onSubmit) {
+// placeholder: 첫 화면만 예시 문장을 쓰고, 대화 화면은 예시 없는 안내 문구를 넘깁니다.
+export function composer(onSubmit, {placeholder = '예: 서울과 부산의 평균 매매가격을 비교해 줘'} = {}) {
   const form = document.createElement('form');
   form.className = 'question-form';
-  form.innerHTML = `<label for="question" class="sr-only">궁금한 지역과 기간을 입력하세요</label><textarea id="question" maxlength="1000" rows="2" placeholder="예: 서울과 부산의 평균 매매가격을 비교해 줘" aria-describedby="input-help" required></textarea><div class="composer-bottom"><label class="sr-only" for="unit">가격 표시 단위</label><select id="unit" aria-label="가격 표시 단위"><option value="">단위 자동</option><option value="korean">억·만원</option><option value="천원">천원</option><option value="만원">만원</option><option value="억원">억원</option></select><span id="input-help">Enter로 전송 · Shift+Enter로 줄바꿈</span><span id="count">0 / 1000</span><button type="submit">조회하기</button></div><div class="sr-only" role="status" id="submit-state"></div>`;
+  form.innerHTML = `<label for="question" class="sr-only">궁금한 지역과 기간을 입력하세요</label><textarea id="question" maxlength="1000" rows="2" placeholder="" aria-describedby="input-help" required></textarea><div class="composer-bottom"><label class="sr-only" for="unit">가격 표시 단위</label><select id="unit" aria-label="가격 표시 단위"><option value="">단위 자동</option><option value="korean">억·만원</option><option value="천원">천원</option><option value="만원">만원</option><option value="억원">억원</option></select><span id="input-help">Enter로 전송 · Shift+Enter로 줄바꿈</span><span id="count">0 / 1000</span><button type="submit">조회하기</button></div><div class="sr-only" role="status" id="submit-state"></div>`;
   const input = form.querySelector('textarea');
+  input.placeholder = placeholder;
   const button = form.querySelector('button');
   const unit = form.querySelector('select');
   const state = form.querySelector('#submit-state');

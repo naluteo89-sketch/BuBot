@@ -1,0 +1,86 @@
+/* 대화 화면: 위에서 아래로 쌓이는 대화 + 항상 하단에 고정된 입력창 */
+.chat-main { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; padding-bottom: 0; }
+.chat-log { flex: 1 0 auto; display: flex; flex-direction: column; gap: 50px; width: 100%; max-width: 1000px; margin: 0 auto; padding: 45px 0 30px; }
+.chat-turn { display: flex; flex-direction: column; gap: 25px; animation: arrive .25s ease-out; }
+
+/* 질문: 오른쪽 말풍선 */
+.chat-log .message { padding: 0; border: 0; background: none; }
+.chat-log .message.user { align-self: flex-end; max-width: min(80%, 720px); padding: 17.5px 25px; background: #eef3ed; border: 1px solid #dce5de; border-radius: 25px 25px 7.5px 25px; }
+.chat-log .message.user .message-label { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+.chat-log .message.user .message-body { font-size: 17.5px; }
+
+/* 답변: 사이드바와 같은 계열의 짙은 녹색 박스 */
+.chat-log .message.assistant { padding: 30px 35px; background: #1f4640; color: #eef5ef; border: 1px solid #2c5a51; border-radius: 7.5px 25px 25px 25px; box-shadow: 0 15px 40px #12302a24; }
+.chat-log .message.assistant .message-label { display: flex; align-items: center; gap: 10px; color: #b7d8a6; }
+.chat-log .message.assistant .message-label::before { content: "B"; display: grid; place-items: center; width: 27.5px; height: 28.75px; border-radius: 9px 9px 9px 2.5px; background: #d5e8ca; color: #163e38; font-size: 15px; font-weight: 800; }
+.chat-log .message.assistant .message-body { font-size: 18.75px; line-height: 1.95; }
+.chat-log .message.assistant .message-route { color: #a9c4b8; }
+.chat-log .message.assistant .answer-details { border-top-color: #3a675d; }
+.chat-log .message.assistant summary { color: #c6dccf; }
+.chat-log .message.assistant summary:hover { color: #ffffff; }
+.chat-log .message.assistant details li { color: #dbe8df; }
+.chat-log .message.assistant summary:focus-visible { outline-color: #b7d8a6; }
+.chat-log .message.assistant.pending { background: #2a554d; }
+.chat-log .message.assistant.pending .message-body { color: #c6dccf; }
+.chat-log .message.error { padding: 22.5px 27.5px; background: #fff6e9; border: 1px solid #f1e2c9; border-radius: 17.5px; }
+
+.chat-empty { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; padding: 60px 0; text-align: center; color: var(--muted); font-size: 16.5px; }
+.chat-empty strong { color: var(--ink); font-size: 25px; letter-spacing: -.5px; }
+.chat-empty[hidden] { display: none; }
+
+/* 입력창: 화면 아래 고정 */
+.chat-dock { position: sticky; bottom: 0; z-index: 2; padding: 30px 0 max(17.5px, env(safe-area-inset-bottom)); background: linear-gradient(to bottom, transparent, var(--bg) 30px); }
+.chat-dock .composer-wrap { max-width: 1000px; margin: 0 auto; }
+.chat-dock .question-form { padding: 20px 25px 15px; }
+.chat-dock textarea { height: 50px; min-height: 50px; }
+.chat-dock .composer-bottom { margin-top: 10px; }
+.chat-dock .composer-bottom button { white-space: nowrap; }
+.chat-dock .notice { margin-top: 10px; min-height: 0; }
+
+@media (max-width: 950px) {
+  .chat-log { gap: 37.5px; padding-top: 30px; }
+  .chat-log .message.user { max-width: 88%; }
+}
+@media (max-width: 480px) {
+  .chat-log .message.user { padding: 13px 18px; }
+  .chat-log .message.user .message-body { font-size: 15px; }
+  .chat-log .message.assistant .message-body { font-size: 15.5px; }
+  .chat-log .message.error { padding: 17px 20px; }
+  .chat-log .message.assistant { padding: 22px 20px; border-radius: 6px 18px 18px 18px; }
+  .chat-empty strong { font-size: 19px; }
+  .chat-empty { font-size: 13px; }
+  .chat-dock { padding-top: 18px; }
+  .chat-dock .question-form { padding: 14px 16px 12px; }
+  .chat-dock textarea { height: 42px; min-height: 42px; }
+  .chat-dock .notice { display: none; }
+  .chat-dock select { max-width: 96px; padding-inline: 8px; }
+  .chat-dock .composer-bottom button { min-width: 0; margin-left: auto; padding: 12px 14px; font-size: 14px; }
+}
+
+/* 답변 위계: 요약 문단 → 근거 수치 목록 → 보충 문단 */
+.message-body.rich { white-space: normal; }
+.message-body.rich p { margin: 0 0 17.5px; }
+.message-body.rich p:last-child { margin-bottom: 0; }
+.message-body.rich .lead { font-size: 21.25px; line-height: 1.8; letter-spacing: -.2px; }
+.chat-log .message.assistant .figure { color: #ffffff; font-weight: 700; }
+.chat-log .message.assistant .lead .figure { color: #d9f0c8; }
+.message-body.rich .facts { list-style: none; margin: 5px 0 22.5px; padding: 0; border-top: 1px solid #3a675d; }
+.message-body.rich .facts li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 5px 20px; padding: 13.75px 0; border-bottom: 1px solid #3a675d; }
+.message-body.rich .fact-label { color: #a9c4b8; font-size: 15px; line-height: 1.6; }
+.message-body.rich .fact-value { margin-left: auto; font-size: 20px; line-height: 1.5; text-align: right; }
+.message-body.rich .facts li.fact-note { display: block; color: #c6dccf; font-size: 15px; line-height: 1.7; }
+
+/* 수치 확인 안내: 오류가 아니라 확인 요청으로 보이도록 */
+.chat-log .message.assistant .answer-check { margin-top: 22.5px; padding: 17.5px 20px; border-radius: 15px; background: #2b4f3d; border: 1px solid #5f8a5a; color: #e6f0e4; }
+.answer-check strong { display: block; color: #f3e3a8; font-size: 16.25px; margin-bottom: 5px; }
+.answer-check strong::before { content: "ⓘ "; }
+.answer-check p { margin: 0; font-size: 15px; line-height: 1.75; }
+.answer-check small { display: block; margin-top: 7.5px; color: #b9cdbf; font-size: 13.75px; }
+
+@media (max-width: 480px) {
+  .message-body.rich .lead { font-size: 16.5px; }
+  .message-body.rich .facts li { display: block; padding: 11px 0; }
+  .message-body.rich .fact-label { display: block; font-size: 12.5px; }
+  .message-body.rich .fact-value { display: block; margin: 2px 0 0; text-align: left; font-size: 17px; }
+  .answer-check p { font-size: 13.5px; }
+}

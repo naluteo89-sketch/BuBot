@@ -108,6 +108,28 @@ class ReviewFixTests(unittest.TestCase):
             self.run_ask('20년 전 서울 집값', analysis(intent='lookup', region_names=['서울']))
 
 
+class LastYearHeadlineTests(unittest.TestCase):
+    """10/12 모바일 테스트: '작년 기준 서울에서 가장 싼 지역'이 결론 없이 설명부터 나오던 문제."""
+    @classmethod
+    def setUpClass(cls):
+        from datetime import datetime
+        from bubot.year_query import last_year_answer
+        corpus = read_corpus()
+        cls.ask = staticmethod(lambda q: last_year_answer(q, corpus, 'korean', today=datetime(2026, 10, 12)))
+
+    def test_cheapest_region_answer_starts_with_conclusion(self):
+        answer = self.ask('작년 기준 서울에서 가장 싼 지역')['answer']
+        self.assertTrue(answer.startswith('2025년 서울에서 월평균 매매가격이 가장 낮은 지역은 도봉구입니다'), answer)
+        self.assertIn('2025-01 ~ 2025-12, 12개월', answer)
+        self.assertIn('비교 범위: 서울 / 시군구', answer)  # 기준 설명은 결론 뒤에 유지
+
+    def test_headline_wording_by_scope(self):
+        self.assertTrue(self.ask('작년 가장 비싼 곳')['answer'].startswith('2025년 전국에서 월평균 매매가격이 가장 높은 지역은 서울 강남구입니다'))
+        self.assertTrue(self.ask('작년 시도 중 가장 싼 곳')['answer'].startswith('2025년 전국에서 월평균 매매가격이 가장 낮은 시도는 경북입니다'))
+        self.assertTrue(self.ask('작년 강남구 최고가')['answer'].startswith('2025년 서울 강남구의 월평균 매매가격이 가장 높은 달은 2025-12'))
+        self.assertTrue(self.ask('작년 서울 가격')['answer'].startswith('2025년 서울의 월평균 매매가격은 다음과 같습니다.'))
+
+
 class ConsistencyAndFallbackTests(unittest.TestCase):
     """10/12: 동일 질문 답변 일관성, 반드시 답변(대체 처리), 검색 범위 확대, 공통 호출 간격."""
     @classmethod

@@ -2,7 +2,7 @@
 .qa-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 30px; }
 .qa-heading .eyebrow { font-size: 12.5px; font-weight: 500; }
 .qa-heading h2 { font-size: 27.5px; letter-spacing: -.7px; margin: 10px 0 0; }
-.qa-pair { overflow: hidden; background: white; border: 1px solid #dce5de; border-radius: 22.5px; margin: 0 0 30px; animation: arrive .25s ease-out; }
+.qa-pair { scroll-margin-top: 25px; overflow: hidden; background: white; border: 1px solid #dce5de; border-radius: 22.5px; margin: 0 0 30px; animation: arrive .25s ease-out; }
 .message { padding: 32.5px 35px; line-height: 1.85; overflow-wrap: anywhere; }
 .message.user { background: #eef3ed; border-bottom: 1px solid #e2e9df; }
 .message.error { background: #fff6e9; }

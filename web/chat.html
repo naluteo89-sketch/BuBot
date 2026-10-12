@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>대화 · BuBot</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#question">질문 입력으로 건너뛰기</a>
+  <div class="layout">
+    <!-- APP_SIDEBAR -->
+    <main id="chat-content" class="chat-main">
+      <header><span>아파트 평균 매매가 조회</span></header>
+      <div id="messages" class="chat-log" role="log" aria-live="polite" aria-label="질문과 답변"></div>
+      <div id="chat-empty" class="chat-empty" hidden>
+        <strong>궁금한 지역과 기간을 물어보세요</strong>
+        <span>질문과 답변이 이곳에 위에서 아래로 쌓여요.</span>
+      </div>
+      <div class="chat-dock">
+        <div class="composer-wrap"><div class="composer-toolbar"><button id="reset" class="text-button new-chat" type="button" title="이전 질문의 맥락을 지우고 새로 시작해요"><span aria-hidden="true">＋</span> 새 대화</button></div><div id="composer"></div><p class="notice" id="query-feedback" role="status">이전 질문에 이어서 물어볼 수 있어요.</p></div>
+      </div>
+      <div id="announcement" class="sr-only" role="status"></div>
+    </main>
+  </div>
+  <script type="module" src="/chat.js"></script>
+</body>
+</html>

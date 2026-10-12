@@ -67,7 +67,6 @@ MARKET_WORDS = re.compile(r'시장|전국|요즘|최근|현재|지금|순위|top
 MARKET_QUESTION = re.compile(r'(?:집값|시세|아파트\s*값|아파트\s*가격|부동산|시장).*'
                              r'(?:바닥|꼭지|고점|어때|어떤가|올랐|내렸|떨어|폭락|폭등|급등|급락|반등|상승|하락|흐름|분위기)')
 FULL_RANKING = re.compile(r'순위|랭킹|(?:구|시도|시군구|지역)\s*별|전체|모든|줄\s*세')
-PRICE_WORDS = re.compile(r'가격|매매|집값|시세|아파트|부동산|거래|변동|상승|하락|올랐|내렸|비싼|싼|순위|평균|지수|억|만원|천원')
 NOW_WORDS = re.compile(r'요즘|요새|현재|지금|최근|최신|근래')
 MONTH_WORDS = re.compile(r'\d{1,2}\s*월|\d{4}-\d{1,2}|달|전월|동월|이맘|같은 시기|연말|연초|연중|상반기|하반기|분기|그때')
 
@@ -399,8 +398,9 @@ def _generate(question, contexts, analysis, display, facts, timings):
         analysis['answer_check'] = 'corrected'
         if issues:
             analysis['answer_check'] = 'warning'
-            result = {**result, 'answer': result['answer'] + '\n\n[수치 확인 필요] 다음 수치가 근거와 일치하지 않습니다: '
-                      + ', '.join(issues) + '. 아래 원본 데이터 계산과 출처를 확인하세요.'}
+            # 화면(web/components/message.js)은 이 표시를 안내 상자로 바꿉니다. 표시 문자열을 바꾸면 함께 고치세요.
+            result = {**result, 'answer': result['answer'] + '\n\n[수치 확인 필요] 답변의 일부 수치가 계산 근거와 다를 수 있어요. '
+                      + '확인할 표현: ' + ', '.join(issues) + '. 아래 원본 데이터 계산과 출처를 기준으로 확인해 주세요.'}
     return result
 
 
@@ -433,9 +433,9 @@ def explain(question, analysis, corpus, collection, catalog, display, region_id=
     if year and not any(m.startswith(year) for m in corpus.months):
         year = None
     query = analysis['rewritten_query'] or question
-    # 프로필·시장 요약은 지역·기간이 정해지면 조건 검색으로 가져오므로, 의미 검색은 항상 안내 문서로 한정합니다.
-    # (제한하지 않으면 형식이 비슷한 월별 시장 요약 수십 개가 용어 질문의 상위 결과를 모두 차지합니다.)
-    general_kinds = GUIDE_KINDS
+    # 지역이나 기간이 정해지면 해당 프로필·시장 요약은 조건 검색으로 가져오므로, 의미 검색은 안내 문서로 한정합니다.
+    # (제한하지 않으면 비슷한 형식의 다른 월 시장 요약이 질문과 무관하게 섞여 들어옵니다.)
+    general_kinds = GUIDE_KINDS if (ids or month or year) else None
     # 후보는 넉넉히 검색하고(로컬 검색이라 비용 없음), GPT에 넘기는 분량은 _generate의 _fit_budget에서 제한합니다.
     hits, diagnostics = _timed(timings, '임베딩·검색', retrieve, collection, query, region_ids=ids, month=month,
                                year=year, general_k=top_k or KNOWLEDGE_TOP_K, general_kinds=general_kinds,
@@ -500,9 +500,6 @@ def _with_notes(result, notes):
     new = [n for n in notes if n not in result.get('notes', [])]
     if not new or not isinstance(result.get('answer'), str):
         return result
-    analysis = result.get('analysis') or {}
-    if analysis.get('intent') == 'clarify' and analysis.get('reason') != 'ambiguous_region':
-        return result  # 범위 밖·확인 질문에는 '오늘 → 최신 월' 같은 시점 안내가 의미 없음
     return {**result, 'answer': result['answer'] + '\n\n' + '\n'.join('※ ' + n for n in new),
             'notes': [*result.get('notes', []), *new]}
 
@@ -566,8 +563,7 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     if analysis['intent']=='clarify':
         analysis.update(_clarify_fallback(question,catalog,corpus.months))
     if analysis['intent']=='clarify':
-        # 보유 연도 안내는 가격 질문에만 붙입니다 ('오늘 점심 메뉴'가 '2026년 자료가 있습니다'로 바뀌지 않도록).
-        if PRICE_WORDS.search(question) and re.search('없|미확보|확보되지|제공되지|지원되지',analysis['message']):
+        if re.search('없|미확보|확보되지|제공되지|지원되지',analysis['message']):
             mentioned=explicit_years(question) | explicit_years(analysis['message'])
             available=[y for y in sorted(mentioned) if any(m.startswith(f'{y}-') for m in corpus.months)]
             if available:
