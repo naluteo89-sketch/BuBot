@@ -42,7 +42,7 @@ def keyboard_to_hangul(text):
         if jamo is None:
             flush()
             out.append(ch)
-        elif jamo in CHO or jamo in JONG:  # 자음
+        elif jamo in CHO or jamo in JONG:  
             if cho and jung:
                 if not jong and jamo in JONG:
                     jong = [jamo]
