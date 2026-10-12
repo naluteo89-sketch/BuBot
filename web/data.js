@@ -1,5 +1,7 @@
 import {request} from './api.js';
 import {status} from './components/status.js';
+import {showChatCount} from './components/chat-store.js';
+showChatCount();
 const fill = (id, text) => {document.getElementById(id).textContent = text;};
 request('api/status').then(data => {
   status(document.querySelector('#status'), data);

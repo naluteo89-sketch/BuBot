@@ -84,3 +84,30 @@
   .message-body.rich .fact-value { display: block; margin: 2px 0 0; text-align: left; font-size: 17px; }
   .answer-check p { font-size: 13.5px; }
 }
+
+/* 첫 화면: 진행 중인 대화 안내 */
+.chat-resume { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12.5px; margin-bottom: 15px; padding: 13.75px 17.5px; border: 1px solid #cfe0d2; border-radius: 17.5px; background: #eef4ec; color: #345f46; font-size: 16.25px; }
+.chat-resume[hidden] { display: none; }
+.chat-resume > span { margin-right: auto; }
+.chat-resume strong { margin-right: 7.5px; }
+.chat-resume a.text-button { background: #1f4640; border-color: #1f4640; color: #fff; }
+.chat-resume a.text-button:hover { background: #143530; }
+@media (max-width: 480px) { .chat-resume { font-size: 13.5px; padding: 12px 14px; } .chat-resume .text-button { font-size: 13px; padding: 8px 12px; } }
+
+/* 대화 화면 머리글: 첫 질문 (작은 글씨, 한 줄) */
+#chat-heading.is-question { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.75px; font-weight: 500; }
+#chat-heading.is-question::before { display: inline-block; margin-right: 10px; vertical-align: middle; }
+.chat-main > header { min-width: 0; }
+.chat-resume-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 240px; }
+.chat-resume-text strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; }
+.chat-resume-text small { font-size: 13px; color: #5d7a66; }
+
+/* 답변 아래 작은 버튼: 복사 · 다시 질문 */
+.turn-actions { display: flex; gap: 7.5px; margin-top: -12.5px; }
+.turn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12.5px; border: 1px solid #d2ddd3; border-radius: 999px; background: #fff; color: #4a6656; font-size: 13.75px; line-height: 1.4; }
+.turn-action > span[aria-hidden] { font-size: 15px; }
+.turn-action:hover:not(:disabled) { background: #eaf1e8; border-color: #93b39b; color: #23463a; }
+.clipboard-proxy { position: fixed; top: 0; left: -9999px; opacity: 0; }
+@media (max-width: 480px) { .turn-action { font-size: 12.5px; padding: 5px 11px; } }
+.question-actions { align-self: flex-end; margin-top: -15px; }
+.answer-actions { margin-top: -12.5px; }

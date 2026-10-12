@@ -19,8 +19,9 @@ STYLE = ("body{margin:0;background:#f8faf8;font-family:sans-serif;color:#243c35}
          "article{background:white;padding:24px;margin:20px 0;border-radius:12px}"
          "pre{white-space:pre-wrap;overflow-wrap:anywhere;font:15px/1.8 sans-serif}")
 # 저장 HTML의 기본 스타일은 해시로, 웹 화면의 공통 CSS와 아이콘은 동일 출처로 허용합니다.
+# 스크립트는 동일 출처 파일(/history.js)만 허용합니다. 사이드바의 대화 제목·질문 수·상태를 다른 페이지와 같게 맞춥니다.
 CSP = ("default-src 'none'; style-src 'sha256-" + base64.b64encode(hashlib.sha256(STYLE.encode("utf-8")).digest()).decode()
-       + "' 'self'; img-src 'self'; frame-ancestors 'none'")
+       + "' 'self'; img-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'")
 
 def atomic(path, text):
     temp = path.with_suffix(path.suffix + ".tmp")
@@ -83,12 +84,12 @@ def render(data):
             '<a class="skip-link" href="#history-content">지난 질문으로 건너뛰기</a>'
             '<div class="layout">' + render_sidebar("history") +
             '<main id="history-content" tabindex="-1"><header><span>다시 살펴보는 우리 동네</span>'
-            '<a class="text-button" href="/">＋ 새 대화</a></header>'
+            '<a class="text-button" id="history-chat-link" href="/chat.html" hidden>진행 중인 대화로</a></header>'
             '<section class="intro"><div class="eyebrow">MY QUESTIONS</div><h1>지난 질문</h1>'
             '<p class="intro-description">궁금했던 지역과 답변을 다시 확인해 보세요.</p>'
             '<div class="history-count">전체 ' + str(len(data)) + '건 · 최근 질문부터 표시</div></section>'
             + sections + '<footer>BuBot <span>공공데이터로 살펴보는 아파트 가격</span></footer>'
-            '</main></div></body></html>')
+            '</main></div><script type="module" src="/history.js"></script></body></html>')
 
 def refresh_view():
     atomic(DIRECTORY / "전체기록.html", render(load_all()))

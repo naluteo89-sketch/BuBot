@@ -102,7 +102,9 @@ class ServerTests(unittest.TestCase):
         style = re.search(r'<style>(.*?)</style>', body.decode('utf-8'), re.S)[1]
         digest = base64.b64encode(hashlib.sha256(style.encode('utf-8')).digest()).decode()
         self.assertIn(f"style-src 'sha256-{digest}'", response.getheader('Content-Security-Policy'))
-        self.assertNotIn('script-src', response.getheader('Content-Security-Policy'))
+        csp = response.getheader('Content-Security-Policy')
+        self.assertIn("script-src 'self'", csp)  # 동일 출처 스크립트(/history.js)만 허용
+        self.assertNotIn('unsafe-inline', csp)
 
     def test_static_page_keeps_default_csp(self):
         response, body = self.call('GET', '/')
@@ -128,6 +130,13 @@ class ServerTests(unittest.TestCase):
         connection.request('GET', '/api/status', headers={'Host': 'evil.example'})
         self.assertEqual(connection.getresponse().status, 403)
         connection.close()
+
+    def test_chat_page_marks_chat_nav_active(self):
+        response, body = self.call('GET', '/chat.html')
+        page = body.decode('utf-8')
+        self.assertEqual(response.status, 200)
+        self.assertIn('class="nav-item active" aria-current="page" href="/chat.html"', page)
+        self.assertNotIn('{{', page)  # 사이드바 자리표시자가 모두 바뀌었는지
 
     def test_lan_host_only_with_lan_option(self):
         port = self.httpd.server_port

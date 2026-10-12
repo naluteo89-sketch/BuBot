@@ -94,7 +94,7 @@ class Handler(BaseHTTPRequestHandler):
         mime = "text/javascript" if path.suffix == ".js" else mimetypes.guess_type(str(path))[0] or "application/octet-stream"
         body = path.read_bytes()
         if path.suffix == ".html":
-            active = "data" if path.name == "data.html" else "home"
+            active = {"data.html": "data", "chat.html": "chat"}.get(path.name, "home")
             body = render_layout(body.decode("utf-8-sig"), active).encode("utf-8")
         self.send(200, body, mime + "; charset=utf-8")
 
