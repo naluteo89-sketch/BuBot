@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from rag_fixtures import fake_embed, knowledge_collection
+from rag_fixtures import NOT_LOCATED, fake_embed, knowledge_collection
 
 import gpt_api
 from bubot.conversation import ConversationMemory, chat, summarize_turn
@@ -83,6 +83,7 @@ class ChatFlowTests(unittest.TestCase):
              patch('gpt_api.analyze_query', return_value=parsed or analysis()) as analyze, \
              patch('gpt_api.embed_texts', side_effect=fake_embed), \
              patch('gpt_api.condense_question', condense), \
+             patch('gpt_api.locate_place', return_value=NOT_LOCATED), \
              patch('gpt_api.generate_answer', return_value={'answer': f'{question} 답변'}):
             result = chat(SID, question, memory=memory)
         return result, condense, analyze

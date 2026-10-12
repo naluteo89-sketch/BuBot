@@ -16,10 +16,21 @@ def negative_concept(question):
         and not re.search(r'지역|어디|곳|\d+\s*(년|개월|월)|찾아|검색|목록', question))
 
 
+# '지금까지 강남구 평균'처럼 보유 자료 전체(첫 월 ~ 최신 월)를 뜻하는 표현
+WHOLE_PERIOD = re.compile(r'지금까지|현재까지|최근까지|여태(?:까지|껏)?|역대|처음부터|통틀어|누적|전\s*기간|전체\s*기간|보유\s*기간|가진\s*데이터\s*(?:전체|전부|모두)')
+UNTIL_NOW = re.compile(r'지금까지|현재까지|최근까지|최신\s*(?:월)?까지|여태(?:까지)?')
+
+
 def period(question, months, inclusive=False):
-    """inclusive=True: 기간 평균용. 'N년'을 최신 월 포함 N×12개월로 봅니다 (False면 N년 전 같은 달부터, 변동률 비교용)."""
+    """inclusive=True: 기간 평균용. 'N년'을 최신 월 포함 N×12개월로 봅니다 (False면 N년 전 같은 달부터, 변동률 비교용).
+
+    '지금까지·역대·처음부터'는 보유 첫 월부터 최신 월까지, '2020년부터 지금까지'는 2020-01부터 최신 월까지입니다.
+    """
     question=resolve_relative_years(question)
     years=sorted(explicit_years(question))
+    if len(years)==1 and UNTIL_NOW.search(question) and re.search(r'부터|이후|~',question):
+        start=max(f'{years[0]}-01',months[0])
+        return (start,months[-1]) if start<=months[-1] else None
     if len(years)==1:
         year=years[0]; ms=[int(v) for v in re.findall(r'(\d{1,2})\s*월',question)]
         start=f'{year}-{min(ms):02}' if ms else f'{year}-01'
@@ -37,6 +48,7 @@ def period(question, months, inclusive=False):
         total=int(end[:4])*12+int(end[5:])-1-span
         return f'{total//12:04}-{total%12+1:02}',end
     if re.search('전체|모든',question) and '기간' in question:return months[0],months[-1]
+    if not years and WHOLE_PERIOD.search(question):return months[0],months[-1]
     return None
 
 

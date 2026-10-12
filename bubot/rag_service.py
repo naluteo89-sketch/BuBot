@@ -67,6 +67,7 @@ MARKET_WORDS = re.compile(r'시장|전국|요즘|최근|현재|지금|순위|top
 MARKET_QUESTION = re.compile(r'(?:집값|시세|아파트\s*값|아파트\s*가격|부동산|시장).*'
                              r'(?:바닥|꼭지|고점|어때|어떤가|올랐|내렸|떨어|폭락|폭등|급등|급락|반등|상승|하락|흐름|분위기)')
 FULL_RANKING = re.compile(r'순위|랭킹|(?:구|시도|시군구|지역)\s*별|전체|모든|줄\s*세')
+PLACE_PRICE = re.compile(r'집값|시세|가격|매매|아파트|얼마|올랐|내렸|변동|추이|평균|비싸|싸')
 NOW_WORDS = re.compile(r'요즘|요새|현재|지금|최근|최신|근래')
 MONTH_WORDS = re.compile(r'\d{1,2}\s*월|\d{4}-\d{1,2}|달|전월|동월|이맘|같은 시기|연말|연초|연중|상반기|하반기|분기|그때')
 
@@ -512,7 +513,109 @@ def _rewritten(question):
 
 def _ask(question, **kwargs):
     question, notes = _rewritten(question)  # 재구성된 질문에 남은 상대 표현도 명시 월로 바꿉니다
-    return _with_notes(_ask_core(question, **kwargs), notes)
+    # 장소 이름('김포공항 주변', '챔피언스 필드 근처')은 질문 분석 모델이 지역을 추측하기 전에 소재지를 확인합니다.
+    located = _locate(question, kwargs) if _mentions_place(question, kwargs) else None
+    if located is None:
+        try:
+            result = _ask_core(question, **kwargs)
+        except ValueError:
+            located = _locate(question, kwargs)  # 지역 오류로 끝난 경우에도 장소 이름이면 한 번 더
+            if located is None:
+                raise
+        else:
+            # 지역을 확정하지 못해 되물었으면 장소 이름인지 확인합니다 ('챔피언스 필드 집값').
+            located = _locate(question, kwargs) if _unresolved(result) else None
+            if located is None:
+                return _with_notes(result, notes)
+    kind, payload, note = located
+    if kind == 'answer':
+        return _with_notes(payload, notes)
+    return _with_notes(_ask_core(payload, **kwargs), [*notes, note])
+
+
+NEARBY = r'\s*(?:근처|주변|인근|부근|근방|일대|쪽|앞|옆|동네|일원)?(?:의|에|에서)?'
+# 행정구역 이름이 없는 질문에서 장소를 가리키는 표현. 있으면 질문 분석 전에 소재지를 확인합니다.
+PLACE_WORDS = re.compile(r'근처|주변|인근|부근|근방|일대|일원|공항|(?<![지구영전권무])역(?:\b|(?=\s|$|앞|근처|주변|인근))|야구장|축구장|경기장|구장|'
+                         r'필드|파크|스타디움|돔|대학|캠퍼스|병원|공원|타워|해수욕장|터미널|청사|시청|구청|신도시|단지|랜드|월드|센터')
+
+
+def _no_region_written(question):
+    corpus = load_corpus()
+    return not find_regions(_normalized(question), region_catalog(corpus))
+
+
+def _mentions_place(question, kwargs):
+    return (not kwargs.get('region_id') and PLACE_PRICE.search(question) and PLACE_WORDS.search(question)
+            and _no_region_written(question))
+
+
+def _unresolved(result):
+    """지역을 확정하지 못해 되물은 결과인지 (범위 밖·같은 이름 지역 안내는 제외)."""
+    analysis = result.get('analysis') or {}
+    return analysis.get('intent') == 'clarify' and analysis.get('reason') not in {'out_of_scope', 'ambiguous_region'}
+
+
+def _region_text(region, catalog):
+    """지역 label을 질문에 넣을 짧은 이름으로 ('전남광주 / 광주 / 북구' → '광주 북구'). 그 지역 하나로만 해석되는 이름을 고릅니다."""
+    from .year_query import named_region
+    parts = region['label'].split(' / ')
+    # 권역 이름('서남권', '강남지역')은 사람이 쓰는 주소가 아니므로 뺀 이름을 먼저 시도합니다 ('서울 강서구', '광주 북구').
+    named = [x for x in parts if not x.endswith(('권', '지역')) and x != '전남광주']
+    forms = [' '.join(named[-2:]), named[-1] if named else '', f'{parts[0]} {parts[-1]}', ' '.join(parts[-2:]), ' '.join(parts)]
+    for text in dict.fromkeys(f for f in forms if f):
+        found, ambiguous = named_region(text, catalog)
+        if found and not ambiguous and found['id'] == region['id']:
+            return text
+    return None
+
+
+def _address_region(address, catalog):
+    """'광주광역시 북구' 같은 주소 → 지역 목록의 지역 하나. 해석이 모호하거나 없으면 None."""
+    from .year_query import named_region
+    found, ambiguous = named_region(_normalized(address or ''), catalog)
+    return None if ambiguous else found
+
+
+def _clarify(answer, reason):
+    return 'answer', {'answer': answer, 'analysis': {'intent': 'clarify', 'reason': reason},
+                      'contexts': [], 'facts': [], 'sources': [], 'route': 'rule'}, None
+
+
+def _locate(question, kwargs):
+    """데이터에 없는 장소 이름을 LLM 일반 지식으로 시군구에 대응시킵니다.
+
+    질문에 지역명이 이미 있으면 호출하지 않습니다(일반 질문은 API 호출이 늘지 않음). LLM이 답한 주소는
+    지역 목록의 지역 하나로 해석되는지, 질문에 넣을 짧은 이름이 그 지역으로만 해석되는지 코드로 검증합니다.
+    반환: ('question', 다시 조회할 질문, 안내문) | ('answer', 확인 질문 결과, None) | None(장소 아님)
+    """
+    if kwargs.get('region_id') or not PLACE_PRICE.search(question) or not _no_region_written(question):
+        return None
+    catalog = region_catalog(load_corpus())
+    try:
+        place = gpt_api.locate_place(question)
+    except Exception:
+        return None
+    name = (place.get('place') or '').strip()
+    if PLACE_PRICE.search(name) or len(name) > 30:
+        name = ''  # 모델이 장소 대신 질문 전체를 적은 경우
+    region = _address_region(place.get('address'), catalog) if place.get('found') else None
+    text = region and _region_text(region, catalog)
+    if name and text:
+        rewritten = (re.sub(re.escape(name) + NEARBY, text + ' ', question, count=1) if name in question
+                     else f'{text} {question}')
+        note = (f"'{name}'은(는) 일반적으로 알려진 소재지({place['address']})를 기준으로 {text} 전체 값을 조회했습니다. "
+                "동 단위 자료가 없어 장소 주변만의 값은 아닙니다. 위치가 다르면 지역명을 직접 적어 주세요.")
+        return 'question', ' '.join(rewritten.split()), note
+    candidates = list(dict.fromkeys(r['label'] for r in (_address_region(a, catalog) for a in place.get('candidates') or []) if r))
+    if name and len(candidates) >= 2:
+        return _clarify(f"'{name}'은(는) 여러 지역에 걸쳐 있거나 같은 이름이 여러 곳이라 한 지역으로 정할 수 없습니다. "
+                        f"다음 중 하나를 골라 다시 물어보세요: {', '.join(candidates)}.", 'ambiguous_place')
+    if PLACE_WORDS.search(question):
+        # 장소를 특정하지 못했으면 다른 지역(전국 등)으로 대신 답하지 않고 되묻습니다.
+        what = f"'{name}'의" if name else '말씀하신 장소의'
+        return _clarify(f"{what} 위치를 확인하지 못했습니다. 동 단위 자료는 없으니 시군구 이름으로 물어보세요. "
+                        "예: '광주 북구 2021년 8월 가격', '서울 강서구 최근 1년 변동률'", 'unknown_place')
+    return None
 
 
 def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, unit=None, embedder=None):
@@ -617,6 +720,10 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
         raise ValueError(f"요청한 월({', '.join(missing)})의 데이터가 없습니다. 보유 기간: {corpus.months[0]} ~ {corpus.months[-1]}")
     if start>end:
         raise ValueError(f'기간 순서가 잘못되었습니다 ({start} → {end}).')
+    if intent=='trend' and start==end and kind is None:
+        # 한 달짜리 '추이'('작년 12월 강남구와 서초구 비교')는 변동률 0%라는 무의미한 값이 되므로 그 달의 조회·비교로 답합니다.
+        intent=analysis['intent']='compare' if len(ids)>1 else 'lookup'
+        target_month=end
     if kind is not None and ((intent=='trend' and kind!='timeline') or (intent in {'lookup','compare','argmin','argmax'} and kind!='monthly')):
         raise ValueError('조회 의도와 --kind 옵션이 일치하지 않습니다.')
     contexts=[]
@@ -676,6 +783,17 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
 
 
 AMBIGUOUS_REGION = '확정할 수 없습니다'
+# 이전 대화를 가리키거나 다른 지역과 견주는 표현. 있으면 지역·기간이 적혀 있어도 재구성합니다.
+REFERS_BACK = re.compile(r'비교|차이|대비|보다|그\s*(?:지역|곳|때|기간)|거기|같은|아까|이전|앞에서|위에서|방금|다시|그럼|그러면|도\s*(?:알려|보여|궁금)')
+
+
+def _self_contained(question):
+    """질문에 확정 지역과 기간이 모두 있고 이전 대화를 가리키지 않으면 True ('서울 2026년 8월 가격')."""
+    if REFERS_BACK.search(question):
+        return False
+    corpus = load_corpus()
+    frame = parse_question(question, region_catalog(corpus), corpus.months)
+    return bool(frame.targets) and not frame.ambiguous and frame.period.explicit
 
 
 def ask(question, history=None, **kwargs):
@@ -737,6 +855,8 @@ def _converse(question, history=None, **kwargs):
     raw_aggregate=aggregate_query(question,load_corpus(),kwargs.get('unit') or DISPLAY_PRICE_UNIT)
     if raw_aggregate is not None and raw_aggregate['analysis']['intent']!='clarify':
         return display_sources({**raw_aggregate,'standalone_question':question,'followup':False,'input_converted':bool(converted),'timings':{}})
+    if history and not explicit_extreme and _self_contained(question):
+        history = None  # 지역·기간을 모두 적은 새 질문은 재구성하지 않음 (직전 지역이 섞여 들어가는 것 방지, API 1회 절약)
     if history and not explicit_extreme:
         open_index()  # 색인 문제는 재구성 API 호출 전에 확인
         condensed = _timed(timings, '질문재구성', gpt_api.condense_question, question, history)

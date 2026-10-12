@@ -3,6 +3,8 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 from bubot.coverage import year_coverage
+from rag_fixtures import NOT_LOCATED
+
 from bubot.rag_service import ask
 
 MONTHS = ['2025-11', '2025-12'] + [f'2026-{m:02}' for m in range(1, 9)]
@@ -39,7 +41,8 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(r['analysis']['coverage'][0]['available_months'], [11])
 
     def test_precedes_model_rejection(self):
-        with patch('bubot.rag_service.open_index', return_value=(SimpleNamespace(months=MONTHS, documents=[]), None)), patch('bubot.rag_service.gpt_api.analyze_query') as model:
+        with patch('bubot.rag_service.open_index', return_value=(SimpleNamespace(months=MONTHS, documents=[]), None)), patch('bubot.rag_service.gpt_api.analyze_query') as model, \
+                patch('gpt_api.locate_place', return_value=NOT_LOCATED):
             r = ask('25년 가진 데이터 평균 거래 금액')
             model.assert_not_called()
             self.assertIn('11월·12월만', r['answer'])

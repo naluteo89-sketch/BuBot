@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from rag_fixtures import fake_embed, knowledge_collection
+from rag_fixtures import NOT_LOCATED, fake_embed, knowledge_collection
 
 import gpt_api
 from bubot.answer_cache import ANSWER_CACHE
@@ -130,6 +130,104 @@ class LastYearHeadlineTests(unittest.TestCase):
         self.assertTrue(self.ask('작년 서울 가격')['answer'].startswith('2025년 서울의 월평균 매매가격은 다음과 같습니다.'))
 
 
+class WholePeriodMeanTests(unittest.TestCase):
+    """10/12 테스트: '지금까지 강남구의 평균 매매가격'이 최신 월 가격 하나로 답하던 문제."""
+    @classmethod
+    def setUpClass(cls):
+        cls.corpus = read_corpus()
+
+    def bounds(self, question):
+        result = aggregate_query(question, self.corpus, '천원')
+        return result and (result['analysis']['intent'], result['analysis']['resolved_start'], result['analysis']['resolved_end'])
+
+    def test_until_now_means_whole_period(self):
+        first, latest = self.corpus.months[0], self.corpus.months[-1]
+        for question in ('지금까지 강남구의 평균 매매가격', '강남구 역대 평균 가격', '처음부터 지금까지 부산 평균'):
+            self.assertEqual(self.bounds(question), ('period_mean', first, latest), question)
+        result = aggregate_query('지금까지 강남구의 평균 매매가격', self.corpus, '천원')
+        self.assertEqual(result['analysis']['valid_months'], len(self.corpus.months))
+
+    def test_from_year_until_now(self):
+        self.assertEqual(self.bounds('2020년부터 지금까지 서울 평균 가격'), ('period_mean', '2020-01', self.corpus.months[-1]))
+
+    def test_self_contained_question_skips_condense(self):
+        # 테스트(10/12): '지금까지 강남구 평균' 다음 '서울 2026년 8월 가격'이 '서울 … 강남구'로 합쳐짐
+        from bubot.rag_service import _self_contained
+        for question in ('서울 2026년 8월 가격', '부산 최근 3개월 추이', '강남구 작년 12월 가격'):
+            self.assertTrue(_self_contained(question), question)
+        for question in ('2020년 기준으로', '대구는?', '서초구랑 비교하면?', '지금까지 평균은?', '그 지역 2025년 가격',
+                         '중구 2025년 가격'):
+            self.assertFalse(_self_contained(question), question)
+        history = [{'question': '지금까지 강남구의 평균 매매가격', 'standalone_question': '지금까지 강남구의 평균 매매가격',
+                    'answer': '..', 'resolved': {'intent': 'period_mean'}, 'clarification': False, 'error': False}]
+        with patch('bubot.rag_service.open_index', return_value=(self.corpus, knowledge_collection())), \
+             patch('gpt_api.condense_question') as condense, \
+             patch('gpt_api.analyze_query', return_value=analysis(region_names=['서울'], month='2026-08')), \
+             patch('gpt_api.embed_texts', side_effect=fake_embed), \
+             patch('gpt_api.generate_answer', return_value={'answer': '모의 답변'}):
+            result = ask('서울 2026년 8월 가격', history=history)
+        condense.assert_not_called()
+        self.assertEqual((result['standalone_question'], result['followup']), ('서울 2026년 8월 가격', False))
+
+    def test_other_questions_keep_their_route(self):
+        self.assertIsNone(aggregate_query('지금까지 강남구 가격 추이', self.corpus, '천원'))
+        self.assertIsNone(aggregate_query('강남구 역대 최고가', self.corpus, '천원'))
+        self.assertEqual(self.bounds('서울 최근 3년 평균 가격')[1:], ('2023-09', self.corpus.months[-1]))
+
+
+class PlaceLocationTests(unittest.TestCase):
+    """10/12 테스트: '5년전 챔피언스 필드 근처 집값'이 지역을 못 찾아 되묻기만 하던 문제 (실제 API 미호출)."""
+    @classmethod
+    def setUpClass(cls):
+        cls.corpus = read_corpus()
+
+    def run_place(self, question, located, parsed=None):
+        with patch('bubot.rag_service.open_index', return_value=(self.corpus, knowledge_collection())), \
+             patch('gpt_api.locate_place', return_value=located) as locate, \
+             patch('gpt_api.analyze_query', side_effect=lambda q, *_: parsed or analysis(
+                 region_names=['광주 북구'] if '광주 북구' in q else [], month='2021-08',
+                 intent='lookup' if '광주 북구' in q else 'clarify', message='' if '광주 북구' in q else '지역?')) as analyze, \
+             patch('gpt_api.embed_texts', side_effect=fake_embed), \
+             patch('gpt_api.generate_answer', return_value={'answer': '모의 답변'}):
+            ANSWER_CACHE.clear()
+            return ask(question), locate, analyze
+
+    def test_landmark_is_located_before_analysis(self):
+        found = {'found': True, 'place': '챔피언스 필드', 'address': '광주광역시 북구', 'candidates': []}
+        result, locate, analyze = self.run_place('5년전 챔피언스 필드 근처 집값', found)
+        locate.assert_called_once()
+        self.assertIn('광주 북구', analyze.call_args.args[0])
+        self.assertNotIn('챔피언스', analyze.call_args.args[0])
+        self.assertEqual(result['analysis']['resolved_month'], '2021-08')
+        self.assertIn('전남광주 / 광주 / 북구', result['facts'][0])
+        self.assertIn("'챔피언스 필드'은(는) 일반적으로 알려진 소재지(광주광역시 북구)", result['answer'])
+
+    def test_unknown_place_asks_for_district_instead_of_guessing(self):
+        result, _, analyze = self.run_place('우리집 근처 집값', {'found': False, 'place': '우리집', 'address': '', 'candidates': []})
+        analyze.assert_not_called()  # 모델이 전국 등 다른 지역으로 대신 답하지 않도록 분석 전에 되묻기
+        self.assertEqual(result['analysis']['reason'], 'unknown_place')
+        self.assertIn('시군구 이름으로', result['answer'])
+
+    def test_place_spanning_districts_lists_candidates(self):
+        located = {'found': False, 'place': '한강공원', 'address': '',
+                   'candidates': ['서울특별시 영등포구', '서울특별시 마포구', '없는시 없는구']}
+        result, _, _ = self.run_place('한강공원 근처 집값', located)
+        self.assertEqual(result['analysis']['reason'], 'ambiguous_place')
+        self.assertIn('영등포구', result['answer'])
+        self.assertIn('마포구', result['answer'])
+        self.assertNotIn('없는시', result['answer'])  # 지역 목록에 없는 주소는 후보에서 제외
+
+    def test_invalid_address_from_model_is_not_used(self):
+        located = {'found': True, 'place': '챔피언스 필드', 'address': '메릴랜드주 볼티모어', 'candidates': []}
+        result, _, _ = self.run_place('챔피언스 필드 근처 집값', located)
+        self.assertEqual(result['analysis']['reason'], 'unknown_place')
+
+    def test_questions_with_written_region_never_call_locate(self):
+        for question in ('서울 2026년 8월 가격', '전국에서 가장 싼 지역', '요즘 집값 어때'):
+            result, locate, _ = self.run_place(question, NOT_LOCATED, analysis(intent='explain', region_names=['전국']))
+            locate.assert_not_called()
+
+
 class ConsistencyAndFallbackTests(unittest.TestCase):
     """10/12: 동일 질문 답변 일관성, 반드시 답변(대체 처리), 검색 범위 확대, 공통 호출 간격."""
     @classmethod
@@ -232,6 +330,24 @@ class ConsistencyAndFallbackTests(unittest.TestCase):
         self.assertEqual(_with_notes(off, ['오늘 → 2026-08'])['answer'], '범위 밖입니다.')
         normal = {'answer': '답', 'analysis': {'intent': 'lookup'}}
         self.assertIn('※ 오늘 → 2026-08', _with_notes(normal, ['오늘 → 2026-08'])['answer'])
+
+    def test_one_month_trend_becomes_comparison(self):
+        # 테스트 기록(16:2x): '작년 12월은?' 후속 → trend 2025-12~2025-12로 분석되어 '변동률 +0.00%'가 근거로 쓰임
+        parsed = analysis(intent='trend', region_names=['강남구', '서초구'], start_month='2025-12', end_month='2025-12')
+        a, b, c, d = self.patches(parsed)
+        with a, b, c, d:
+            result = ask('2025년 12월 강남구와 서초구 가격 비교')
+        self.assertEqual((result['analysis']['intent'], result['analysis']['resolved_month']), ('compare', '2025-12'))
+        self.assertFalse(any('변동률 +0.00%' in f for f in result['facts']))
+        self.assertTrue(all('2025-12' in f for f in result['facts'][:2]))
+
+    def test_short_followup_rule_in_condense_prompt(self):
+        client = MagicMock()
+        client.responses.parse.return_value = SimpleNamespace(status='incomplete', output_parsed=None)
+        with patch('gpt_api.shared_client', return_value=client):
+            gpt_api.condense_question('2020년 기준으로', [{'question': '서울 상위권 10개 지역 시세들 알려줘'}])
+        system = client.responses.parse.call_args.kwargs['input'][0]['content']
+        self.assertIn("'2020년 기준 서울 상위권 10개 지역 시세들 알려줘'", system)
 
     def test_web_shows_guidance_as_answer(self):
         from bubot.web import service

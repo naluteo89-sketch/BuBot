@@ -8,6 +8,8 @@ from pathlib import Path
 
 DIM = 128
 SPEC = {"model": "offline-ngram", "dimensions": DIM, "endpoint": "offline"}
+# gpt_api.locate_place 모의 응답: 장소를 특정하지 못함 (테스트가 실제 위치 확인 API를 부르지 않도록)
+NOT_LOCATED = {"found": False, "place": "", "address": "", "candidates": []}
 
 
 def fake_embed(texts):
