@@ -42,7 +42,6 @@ body:
     attributes:
       label: 원인 (Cause)
       description: 버그의 근본 원인을 작성하세요.
-      placeholder: "예: refresh_token 만료 시간 검증 로직 누락"
     validations:
       required: false
 
@@ -51,7 +50,6 @@ body:
     attributes:
       label: 수정 내용 (Solution)
       description: 어떻게 수정했는지 또는 수정할 계획을 작성하세요.
-      placeholder: "예: 만료 검증 로직 추가 및 단위 테스트 보강"
     validations:
       required: true
 
@@ -73,11 +71,10 @@ body:
       label: 체크리스트
       options:
         - label: 재현 테스트 완료
-          required: false
         - label: 수정 코드 리뷰 완료
-          required: false
         - label: 릴리즈 노트 반영
-          required: false
+    validations:
+      required: false
 
   - 입력: textarea
     id: references
