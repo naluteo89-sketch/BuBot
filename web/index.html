@@ -18,15 +18,10 @@
         <h1 id="main-title">어느 지역의 가격이<br><em>궁금하세요?</em></h1>
         <p class="intro-description">평균 매매가부터 지역 비교까지, 편하게 물어보세요.</p>
       </section>
-      <div class="composer-wrap"><div class="composer-toolbar"><button id="reset" class="text-button new-chat" type="button" title="이전 질문의 맥락을 지우고 새로 시작해요"><span aria-hidden="true">＋</span> 새 대화</button></div><div id="composer"></div><p class="notice" id="query-feedback" role="status">지역과 기간을 함께 입력하면 더 정확하게 확인할 수 있어요.</p></div>
+      <div class="composer-wrap"><div id="composer"></div><p class="notice" id="query-feedback" role="status">질문하면 대화 화면으로 이동해 답변을 보여 드려요.</p></div>
       <section class="examples" aria-labelledby="examples-title"><h2 id="examples-title">이런 질문은 어때요?</h2><div id="suggestions"></div></section>
-      <section id="qa-section" class="qa-section" aria-labelledby="qa-title" hidden>
-        <div class="qa-heading"><div><span class="eyebrow">질문에서 답변까지</span><h2 id="qa-title">함께 살펴본 가격</h2></div><button id="ask-again" class="text-button" type="button">이어서 질문하기</button></div>
-        <div id="messages" role="log" aria-live="polite" aria-label="질문과 답변"></div>
-      </section>
       <div class="data-range"><span>조회 기간</span><strong id="period">기간 확인 중…</strong><a href="/data.html" id="period-link">데이터 기준 안내</a></div>
       <footer>BuBot <span>지역을 비교하고, 가격의 흐름을 이해하세요.</span></footer>
-      <div id="announcement" class="sr-only" role="status"></div>
     </main>
   </div>
   <script type="module" src="/app.js"></script>

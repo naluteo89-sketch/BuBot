@@ -82,22 +82,56 @@ def last_year_answer(question, corpus, unit, *, today=None):
     docs = [d for d in corpus.documents if d.metadata['kind']=='monthly'
             and d.metadata['month'] in months and d.metadata['region_id'] in allowed
             and d.metadata.get('price_thousand_krw') is not None]
-    prefix = f'{year}년 보유 데이터({", ".join(months)})만 사용했습니다. '
+    note = f'{year}년 보유 데이터({_month_span(months, corpus.months)})만 사용했습니다. '
     if len([m for m in corpus.months if m.startswith(f'{year}-')]) < 12:
-        prefix += '나머지 월은 원본 CSV에 없어 연간 전체를 대표하지 않습니다. '
-    prefix += '아래 값은 개별 실거래 가격이 아닌 지역별 아파트 월평균 매매가격입니다.'
+        note += '나머지 월은 원본 CSV에 없어 연간 전체를 대표하지 않습니다. '
+    note += '값은 개별 실거래 가격이 아닌 지역별 아파트 월평균 매매가격입니다.'
     if not docs:
-        return reply(prefix + '\n해당 지역의 보유 월 가격이 결측입니다.', [], [], year, months)
+        return reply(note + '\n해당 지역의 보유 월 가격이 결측입니다.', [], [], year, months)
     selected = [(max if high else min)(docs, key=lambda d:d.metadata['price_thousand_krw'])] if high or low else sorted(docs,key=lambda d:d.metadata['month'])
     facts = [f"{d.metadata['month']} {d.metadata['region_path']}: {format_price(d.metadata['price_thousand_krw'],unit)}" for d in selected]
     if high or low:
-        prefix += f"\n비교 범위: {'전국' if not scope else scope['label']} / {'해당 지역' if scope and scope['level']=='시군구' else level}, 결측 제외 {len(docs)}개 지역·월 값 중 {'최고' if high else '최저'}."
+        note += f"\n비교 범위: {'전국' if not scope else scope['label']} / {'해당 지역' if scope and scope['level']=='시군구' else level}, 결측 제외 {len(docs)}개 지역·월 값 중 {'최고' if high else '최저'}."
+    # 결론 한 문장을 먼저 두고(페르소나 답변 형식과 같은 순서), 계산값과 사용한 월·비교 범위 안내를 뒤에 붙입니다.
+    headline = _headline(selected, scope, level if high or low else None, high, low, year, unit)
     sources = [f"{CSV_PATH.name} · {d.metadata['source_row']}행 · {d.metadata['month']} · SHA-256 {d.metadata['source_sha256']}" for d in selected]
-    result = reply(prefix+'\n\n'+'\n'.join(facts), facts, sources, year, months)
+    result = reply(headline + '\n\n' + '\n'.join('- ' + f for f in facts) + '\n\n' + note, facts, sources, year, months)
     result['contexts'] = [{'id':d.id,'text':d.text,'metadata':d.metadata} for d in selected]
     if high or low:
         result['analysis']['price_extreme'] = True
     return result
+
+
+def _month_span(months, all_months):
+    """연속된 월이면 '2025-01 ~ 2025-12, 12개월', 중간이 비면 목록 그대로."""
+    if len(months) > 2:
+        start = all_months.index(months[0])
+        if list(all_months[start:start + len(months)]) == list(months):
+            return f'{months[0]} ~ {months[-1]}, {len(months)}개월'
+    return ', '.join(months)
+
+
+def _short_name(path, scope):
+    """'서울 / 강북지역 / 동북권 / 도봉구' → 범위가 서울이면 '도봉구', 전국이면 '서울 도봉구'."""
+    parts = path.split(' / ')
+    if len(parts) == 1 or (scope and path.startswith(scope['label'] + ' / ')):
+        return parts[-1]
+    return f'{parts[0]} {parts[-1]}'
+
+
+def _headline(selected, scope, level, high, low, year, unit):
+    word = '높은' if high else '낮은'
+    first = selected[0].metadata
+    price = format_price(first['price_thousand_krw'], unit)
+    if not (high or low):
+        return f"{year}년 {_short_name(first['region_path'], None)}의 월평균 매매가격은 다음과 같습니다."
+    if scope and scope['level'] == '시군구':
+        return (f"{year}년 {_short_name(scope['label'], None)}의 월평균 매매가격이 가장 {word} 달은 "
+                f"{first['month']}({price})입니다.")
+    place = f"{_short_name(scope['label'], None)}에서" if scope else '전국에서'
+    noun = '시도는' if level == '시도' else '지역은'
+    return (f"{year}년 {place} 월평균 매매가격이 가장 {word} {noun} "
+            f"{_short_name(first['region_path'], scope)}입니다 ({first['month']}, {price}).")
 
 
 def reply(answer, facts, sources, year, months):
