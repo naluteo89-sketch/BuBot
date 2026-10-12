@@ -1,11 +1,13 @@
 """답변 문장 속 변동률(%)을 근거 수치와 대조합니다.
 
 GPT가 근거의 -0.88%를 +0.88%로 쓰거나(부호 반전) 근거에 없는 비율을 만들어 내는 경우를 찾습니다.
+근거의 배율('0.9941배')을 백분율('99.41% 수준')로 바꿔 쓴 것은 같은 값이므로 통과시킵니다.
 근거는 질문, 원본 계산값(facts), GPT에 전달한 문서 본문입니다. 금액은 표기 방식이 다양해 대조하지 않습니다.
 """
 import re
 
 PERCENT = re.compile(r'([+\-−])?\s*(\d+(?:\.(\d+))?)\s*%')
+RATIO = re.compile(r'(\d+(?:\.\d+)?)\s*배')
 DOWN_WORDS = re.compile(r'^[^.,\n]{0,12}?(하락|감소|내렸|내린|떨어|낮아|줄어)')
 UP_WORDS = re.compile(r'^[^.,\n]{0,12}?(상승|증가|올랐|오른|높아|늘어)')
 
@@ -16,6 +18,7 @@ def _evidence(texts):
         for sign, number, _ in PERCENT.findall(text or ''):
             value = float(number)
             values.append((-value if sign and sign in '-−' else value, bool(sign)))
+        values.extend((round(float(ratio) * 100, 6), False) for ratio in RATIO.findall(text or ''))
     return values
 
 

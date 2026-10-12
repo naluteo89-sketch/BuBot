@@ -211,6 +211,29 @@ class ConsistencyAndFallbackTests(unittest.TestCase):
         normal = {'answer': '답', 'analysis': {'intent': 'lookup'}}
         self.assertIn('※ 오늘 → 2026-08', _with_notes(normal, ['오늘 → 2026-08'])['answer'])
 
+    def test_ratio_written_as_percent_is_not_regenerated(self):
+        # 테스트 기록(15:44): '0.9941배'를 '99.41% 수준'으로 쓴 답변이 재생성(+2.9초)되고 거짓 경고가 붙음
+        from bubot.answer_check import number_issues
+        evidence = ['서초구 가격은 강남구 가격의 0.9941배, 강남구보다 -0.59%']
+        self.assertEqual(number_issues('서초구는 강남구의 약 99.41% 수준입니다.', evidence), [])
+        self.assertEqual(number_issues('99.4% 수준', evidence), [])
+        self.assertTrue(number_issues('98.0% 수준', evidence))
+        self.assertIn('부호 반대', number_issues('0.59% 상승', evidence)[0])
+
+    def test_every_chat_call_uses_fixed_prompt_cache_key(self):
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(status='completed', output_text='답변')
+        client.responses.parse.return_value = SimpleNamespace(status='incomplete', output_parsed=None)
+        context = [{'id': 'd', 'text': '근거', 'metadata': {'kind': 'guide'}}]
+        with patch('gpt_api.shared_client', return_value=client):
+            gpt_api.generate_answer('질문', context)
+            gpt_api.condense_question('그럼 부산은?', [{'question': '서울 가격'}])
+            with self.assertRaises(ValueError):
+                gpt_api.analyze_query('서울 가격', {}, ['2026-08'])
+        keys = [c.kwargs['prompt_cache_key'] for c in client.responses.parse.call_args_list]
+        self.assertEqual(keys, ['bubot-condense', 'bubot-analyze'])
+        self.assertEqual(client.responses.create.call_args.kwargs['prompt_cache_key'], 'bubot-answer')
+
     def test_web_shows_guidance_as_answer(self):
         from bubot.web import service
         with patch('bubot.web.service.chat', side_effect=ValueError('조회할 지역명을 입력해주세요.')):

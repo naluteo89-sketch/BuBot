@@ -16,6 +16,9 @@ CHAT_MODEL = "gpt-4o-mini"
 API_BASE_URL = "https://api.openai.com/v1"
 API_MIN_INTERVAL = float(os.getenv("BUBOT_API_MIN_INTERVAL", "0.3"))  # 모든 OpenAI 호출 사이 최소 간격(초)
 API_MAX_RETRIES = int(os.getenv("BUBOT_API_MAX_RETRIES", "3"))       # 429·5xx·연결 오류 재시도 (SDK 지수 대기)
+# 단계별 고정 키. 같은 키의 요청을 같은 캐시 서버로 보내 고정 프롬프트(질문 분석 약 5,100토큰)가 캐시 적중합니다.
+# 측정(2026-10-12): 키 없음 6회 중 1회 적중 → 키 지정 시 첫 호출 이후 매번 적중.
+PROMPT_CACHE_KEYS = {"analyze": "bubot-analyze", "condense": "bubot-condense", "answer": "bubot-answer"}
 
 
 def resolve_api_key() -> tuple[str, str]:
@@ -170,10 +173,11 @@ argmax/argmin의 region_names는 검색 범위 하나 이하, 기본 level은 �
 비교 대상 시점이 두 개면 같은 지역의 trend로 처리하세요.
 표시 단위는 명시된 경우만 지정하고 기본 null. 메시지는 clarify일 때만 적으세요.
 """
-    # 고정 내용(월·지역 목록)을 앞에, 질문을 맨 뒤에 둬야 OpenAI 프롬프트 캐시가 적용됩니다.
+    # 고정 내용(월·지역 목록)을 앞에, 질문을 맨 뒤에 둬야 OpenAI 프롬프트 캐시가 적용됩니다 (PROMPT_CACHE_KEYS 참고).
     payload = {"available_months":months, "regions":[r['label'] for r in catalog.values()],
                "today":_today(), "latest_month":months[-1], "question":question}
     response = shared_client().responses.parse(model=CHAT_MODEL, store=False, temperature=0,
+        prompt_cache_key=PROMPT_CACHE_KEYS["analyze"],
         input=[{"role":"system", "content":instruction},
                {"role":"user", "content":json.dumps(payload,ensure_ascii=False)}],
         text_format=Analysis, max_output_tokens=1200)
@@ -206,6 +210,7 @@ history는 같은 사용자와의 최근 대화입니다(오래된 것부터). �
              for t in history]
     payload = {"history": turns, "question": question}
     response = shared_client().responses.parse(model=CHAT_MODEL, store=False, temperature=0,
+        prompt_cache_key=PROMPT_CACHE_KEYS["condense"],
         input=[{"role":"system", "content":instruction},
                {"role":"user", "content":json.dumps(payload, ensure_ascii=False)}],
         text_format=Condensed, max_output_tokens=400)
@@ -263,6 +268,7 @@ today는 실제 오늘 날짜입니다. 당신의 학습 시점을 현재로 가
     if correction:
         payload["correction"] = list(correction)
     response = shared_client().responses.create(model=CHAT_MODEL, store=False, temperature=0,
+        prompt_cache_key=PROMPT_CACHE_KEYS["answer"],
         input=[{"role":"system","content":prompt},
                {"role":"user","content":json.dumps(payload,ensure_ascii=False)}],
         max_output_tokens=2500)
