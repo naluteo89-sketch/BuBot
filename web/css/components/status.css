@@ -1,0 +1,3 @@
+#status { font-size: 16.5px; color: #d6e6d9; margin-bottom: 8.75px; }
+#status::before { content: ''; display: inline-block; width: 7.5px; height: 7.5px; border-radius: 50%; background: #b5d7a4; margin-right: 10px; }
+#status.unavailable::before { background: #e4bc72; }

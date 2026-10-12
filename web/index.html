@@ -1,4 +1,34 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BuBot · 부동산 평균 매매가 조회 AI</title><link rel="stylesheet" href="/styles.css"></head>
-<body><div class="layout"><aside><a class="brand" href="/">B<span>u</span>Bot <small>LAB</small></a><div class="aside-title">데이터로 살펴보는<br>우리 동네 아파트</div><p>평균매매가격 조회부터<br>지역 비교와 가격 흐름까지.</p><div id="status" role="status">연결 상태 확인 중…</div><div class="aside-foot"><span id="project">부동산 평균 매매가 조회 AI 개발</span><br>LOCAL TEST WORKSPACE · 원본 데이터 기반 RAG</div></aside>
-<main><header><span>부동산 데이터 어시스턴트</span><button id="reset" class="text-button">새 대화</button></header><section class="intro"><div class="eyebrow">APARTMENT PRICE EXPLORER</div><h1>어느 지역이 궁금하세요?</h1><p>지역과 기간을 함께 입력하면 더 정확하게 확인할 수 있어요.</p><p class="data-range"><strong>조회 가능 기간: <span id="period">확인 중…</span></strong><br><span id="coverage">지역별로 일부 월의 값은 없을 수 있습니다.</span></p><details class="data-source"><summary>데이터 출처 보기</summary><p>출처: <span id="source">공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매</span></p></details><div id="suggestions"></div></section><div id="history"></div><div id="messages" role="log" aria-live="polite" aria-label="질문과 답변"></div><div class="composer-wrap"><div id="composer"></div><p class="notice">전송 후 3초간 재전송이 제한됩니다. · 질문과 답변은 자동 저장됩니다. 최근 질문·답변 <span id="memory-turns">3</span>개를 기억해 이어지는 질문을 이해합니다. 새 대화를 누르면 초기화됩니다.</p></div></main></div><script type="module" src="/app.js"></script></body></html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BuBot · 우리 동네 아파트 가격</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#question">질문 입력으로 건너뛰기</a>
+  <div class="layout">
+    <!-- APP_SIDEBAR -->
+    <main id="main-content">
+      <header><span>아파트 평균 매매가 조회</span></header>
+      <section class="intro" aria-labelledby="main-title">
+        <div class="eyebrow"><span aria-hidden="true"></span> 우리 동네를 이해하는 새로운 방법</div>
+        <h1 id="main-title">어느 지역의 가격이<br><em>궁금하세요?</em></h1>
+        <p class="intro-description">평균 매매가부터 지역 비교까지, 편하게 물어보세요.</p>
+      </section>
+      <div class="composer-wrap"><div class="composer-toolbar"><button id="reset" class="text-button new-chat" type="button" title="이전 질문의 맥락을 지우고 새로 시작해요"><span aria-hidden="true">＋</span> 새 대화</button></div><div id="composer"></div><p class="notice" id="query-feedback" role="status">지역과 기간을 함께 입력하면 더 정확하게 확인할 수 있어요.</p></div>
+      <section class="examples" aria-labelledby="examples-title"><h2 id="examples-title">이런 질문은 어때요?</h2><div id="suggestions"></div></section>
+      <section id="qa-section" class="qa-section" aria-labelledby="qa-title" hidden>
+        <div class="qa-heading"><div><span class="eyebrow">질문에서 답변까지</span><h2 id="qa-title">함께 살펴본 가격</h2></div><button id="ask-again" class="text-button" type="button">이어서 질문하기</button></div>
+        <div id="messages" role="log" aria-live="polite" aria-label="질문과 답변"></div>
+      </section>
+      <div class="data-range"><span>조회 기간</span><strong id="period">기간 확인 중…</strong><a href="/data.html" id="period-link">데이터 기준 안내</a></div>
+      <footer>BuBot <span>지역을 비교하고, 가격의 흐름을 이해하세요.</span></footer>
+      <div id="announcement" class="sr-only" role="status"></div>
+    </main>
+  </div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>데이터 안내 · BuBot</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#data-content">데이터 안내로 건너뛰기</a>
+  <div class="layout">
+    <!-- APP_SIDEBAR -->
+    <main id="data-content" tabindex="-1">
+      <header><span>숫자의 출처를 이해하는 시간</span><a class="text-button" href="/">가격 알아보기</a></header>
+      <section class="intro" aria-labelledby="data-title">
+        <div class="eyebrow">알고 보면 더 유용한 데이터</div>
+        <h1 id="data-title">어떤 데이터로<br>답변하나요?</h1>
+        <p class="intro-description">조회 가능한 기간과 출처, 가격을 읽는 기준을 안내해 드려요.</p>
+      </section>
+      <div class="data-guide">
+        <section class="guide-card guide-period" aria-labelledby="period-title">
+          <span class="guide-number">01</span><h2 id="period-title">조회 가능한 기간</h2>
+          <p id="period" class="guide-period-value" role="status">기간 확인 중…</p>
+          <p>현재 등록된 데이터의 기간입니다. 지역과 월에 따라 제공되는 값이 다를 수 있어요.</p>
+          <details><summary>지역별 조회 범위 확인</summary><p id="coverage">지역별 데이터 범위를 확인하고 있습니다.</p></details>
+        </section>
+        <section class="guide-card" aria-labelledby="source-title">
+          <span class="guide-number">02</span><h2 id="source-title">데이터의 출처</h2>
+          <p id="source">출처 정보를 확인하고 있습니다.</p>
+          <p>답변에 표시되는 ‘계산 근거와 출처 확인’에서 해당 조회에 사용한 정보를 살펴볼 수 있어요.</p>
+        </section>
+        <section class="guide-card" aria-labelledby="reading-title">
+          <span class="guide-number">03</span><h2 id="reading-title">가격은 이렇게 읽어 주세요</h2>
+          <p>표시되는 가격은 선택한 지역과 기간의 평균값입니다. 개별 아파트의 실제 거래가격과는 다를 수 있어요.</p>
+          <p>지역을 비교할 때는 같은 기간과 금액 단위를 기준으로 확인해 주세요. 입력창에서 표시 단위를 선택할 수 있습니다.</p>
+        </section>
+        <section class="guide-card" aria-labelledby="conversation-title">
+          <span class="guide-number">04</span><h2 id="conversation-title">이어지는 질문과 기록</h2>
+          <p>“그럼 부산은?”처럼 이전 질문에 이어서 물어볼 수 있어요. ‘새 대화’를 누르면 이전 질문의 맥락이 초기화됩니다.</p>
+          <p>질문과 답변은 이 기기에 저장되며, ‘지난 질문’에서 다시 확인할 수 있습니다.</p>
+        </section>
+      </div>
+      <div class="guide-action"><p>이제 궁금한 지역을 살펴볼까요?</p><a class="primary-link" href="/">가격 알아보기</a></div>
+      <footer>BuBot <span>지역을 비교하고, 가격의 흐름을 이해하세요.</span></footer>
+    </main>
+  </div>
+  <script type="module" src="/data.js"></script>
+</body>
+</html>

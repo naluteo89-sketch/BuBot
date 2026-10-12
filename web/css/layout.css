@@ -1,0 +1,12 @@
+.layout { display: flex; min-height: 100vh; }
+main { width: min(100%, 1475px); min-width: 0; margin: 0 auto; padding: 0 85px 35px; }
+#main-content > .intro, #main-content > .composer-wrap, #main-content > .examples, #main-content > .qa-section, #main-content > .data-range, #main-content > .data-source { max-width: 1000px; margin-inline: auto; }
+footer { display: flex; justify-content: center; gap: 17.5px; align-items: center; padding: 40px 0 5px; color: var(--muted); font-size: 18px; }
+footer span { font-size: 16.5px; }
+@media (max-width: 1375px) { main { padding-inline: 45px; } }
+@media (max-width: 950px) {
+  .layout { display: block; }
+  main { padding: 0 27.5px 30px; }
+  footer { flex-wrap: wrap; gap: 5px 15px; }
+}
+@media (max-width: 480px) { footer { font-size: 13px; } footer span { font-size: 12px; } }

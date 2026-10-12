@@ -54,11 +54,26 @@ class ServiceTests(unittest.TestCase):
 
 
 class HistoryTests(unittest.TestCase):
-    def test_route_label_and_project_in_view(self):
+    def test_history_keeps_diagnostics_in_log_only(self):
         record = {'created_at': '2026-10-08T15:00:00+09:00', 'id': 'x', 'status': 'success', 'unit': None,
                   'elapsed_seconds': 0.1, 'question': '작년 서울 가격', 'result': {'answer': '답', 'route': 'rule'}}
         self.assertIn('rule (원본 직접 집계·안내 (AI 답변 생성 없음))', history.readable(record))
-        self.assertIn(PROJECT_NAME, history.render([record]))
+        page = history.render([record])
+        self.assertIn('지난 질문', page)
+        self.assertIn('aria-label="BuBot 메인 페이지"', page)
+        self.assertNotIn('처리 경로', page)
+        self.assertNotIn('AI 답변 생성 없음', page)
+
+    def test_history_escapes_content_and_preserves_evidence(self):
+        record = {'created_at': '2026-10-12', 'question': '<script>alert(1)</script>',
+                  'result': {'answer': '<b>답변</b>', 'facts': ['계산 근거'],
+                             'sources': ['공공데이터'], 'retrieved': ['internal-document-id']}}
+        page = history.render([record])
+        self.assertNotIn('<script>', page)
+        self.assertIn('&lt;b&gt;답변&lt;/b&gt;', page)
+        self.assertIn('계산 근거', page)
+        self.assertIn('공공데이터', page)
+        self.assertNotIn('internal-document-id', page)
 
 
 class ServerTests(unittest.TestCase):
@@ -113,6 +128,28 @@ class ServerTests(unittest.TestCase):
         connection.request('GET', '/api/status', headers={'Host': 'evil.example'})
         self.assertEqual(connection.getresponse().status, 403)
         connection.close()
+
+    def test_lan_host_only_with_lan_option(self):
+        port = self.httpd.server_port
+
+        def status(host, origin=None):
+            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=10)
+            headers = {'Host': host, **({'Origin': origin} if origin else {})}
+            connection.request('GET', '/', headers=headers)
+            code = connection.getresponse().status
+            connection.close()
+            return code
+
+        self.assertEqual(status(f'192.168.0.10:{port}'), 403)  # 기본값: PC 자신만 허용
+        self.httpd.allow_lan = True
+        try:
+            self.assertEqual(status(f'192.168.0.10:{port}'), 200)
+            self.assertEqual(status(f'10.0.0.5:{port}', f'http://10.0.0.5:{port}'), 200)
+            self.assertEqual(status(f'192.168.0.10:{port}', 'http://evil.example'), 403)
+            self.assertEqual(status(f'evil.example:{port}'), 403)  # 도메인 이름 거부
+            self.assertEqual(status(f'8.8.8.8:{port}'), 403)  # 공인 IP 거부
+        finally:
+            self.httpd.allow_lan = False
 
 
 if __name__ == '__main__':

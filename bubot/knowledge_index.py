@@ -96,12 +96,14 @@ def _hits(result, pool):
 
 
 def retrieve(collection, question: str, *, region_ids=(), month=None, year=None, general_k=4,
-             general_kinds=None, max_distance=KNOWLEDGE_MAX_DISTANCE, embedder=None, limit=8):
+             general_kinds=None, max_distance=KNOWLEDGE_MAX_DISTANCE, embedder=None, limit=8, fallback_k=0):
     """질문 벡터 1개로 여러 후보군을 검색합니다.
 
     - region: 확정된 지역의 프로필 (조건 일치 문서이므로 거리 임계값 미적용)
     - period: 확정된 월/연도의 시장 요약 (조건 일치 문서이므로 거리 임계값 미적용)
     - general: 조건 없이 의미가 가까운 문서 (max_distance 이내만 사용)
+    - nearest: 위 결과가 하나도 없을 때 임계값 밖에서 가장 가까운 fallback_k개.
+      임계값 경계의 문서가 들어왔다 빠졌다 하며 같은 질문이 '근거 없음'과 정상 답변을 오가지 않도록 합니다.
     반환: (근거 문서 목록, 진단 정보)
     """
     embedder = gpt_api.embed_texts if embedder is None else embedder
@@ -123,12 +125,15 @@ def retrieve(collection, question: str, *, region_ids=(), month=None, year=None,
         where = {"kind": {"$in": list(general_kinds)}} if general_kinds else None
         for hit in _hits(collection.query(vectors, general_k, include=None, where=where), "general"):
             (found if hit["distance"] <= max_distance else rejected).append(hit)
+    if not found and fallback_k:
+        nearest = sorted(rejected, key=lambda h: h["distance"])[:fallback_k]
+        found = [{**hit, "pool": "nearest"} for hit in nearest]
     unique, seen = [], set()
     for hit in found:
         if hit["id"] not in seen:
             seen.add(hit["id"])
             unique.append(hit)
-    diagnostics = {"max_distance": max_distance,
+    diagnostics = {"max_distance": max_distance, "fallback": any(h["pool"] == "nearest" for h in unique),
                    "used": [(h["id"], h["pool"], round(h["distance"], 4)) for h in unique[:limit]],
                    "rejected": [(h["id"], round(h["distance"], 4)) for h in rejected]}
     return unique[:limit], diagnostics

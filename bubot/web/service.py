@@ -25,12 +25,18 @@ def answer(payload):
     if unit is not None and unit not in DISPLAY_PRICE_UNITS:
         raise ValueError("지원하지 않는 가격 단위입니다.")
     session_id = MEMORY.check(payload.get("session_id"))
-    result = chat(session_id, question.strip(), unit=unit)
+    try:
+        result = chat(session_id, question.strip(), unit=unit)
+    except ValueError as error:
+        # 지역 없음·보유 기간 밖 같은 안내도 오류 화면이 아니라 답변으로 보여 줍니다 (대화 메모리에는 chat이 기록).
+        result = {"answer": str(error), "analysis": {"intent": "clarify", "reason": "guidance"},
+                  "standalone_question": getattr(error, "standalone_question", "") or question.strip()}
     response = {key: result.get(key, default) for key, default in
                 (("answer", ""), ("facts", []), ("sources", []),
                  ("standalone_question", ""), ("followup", False), ("input_converted", False),
-                 ("memory_turns", 0), ("memory_used", 0), ("timings", {}))}
+                 ("memory_turns", 0), ("memory_used", 0), ("timings", {}), ("cached", False))}
     response["route"] = route_of(result)
+    response["answer_check"] = (result.get("analysis") or {}).get("answer_check", "")
     retrieval = (result.get("analysis") or {}).get("retrieval") or {}
     response["retrieved"] = [f"{doc_id} ({pool}, 거리 {distance})" for doc_id, pool, distance in retrieval.get("used", [])]
     return response
