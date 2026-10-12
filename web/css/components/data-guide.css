@@ -1,0 +1,14 @@
+.data-guide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px; }
+.guide-card { padding: 37.5px; border: 1px solid var(--line); border-radius: 22.5px; background: #fff; overflow-wrap: anywhere; }
+.guide-number { display: block; margin-bottom: 22.5px; color: #6b8971; font-size: 13.75px; letter-spacing: 1px; }
+.guide-card h2 { margin: 0 0 22.5px; font-size: 22.5px; letter-spacing: -.5px; }
+.guide-card p { margin: 15px 0 0; color: #5b6e62; font-size: 16.25px; line-height: 1.95; }
+.guide-period { background: #edf3e9; }
+.guide-card .guide-period-value { color: #285b3f; font-size: 28.75px; font-weight: 650; line-height: 1.5; letter-spacing: -.5px; }
+.guide-card details { margin-top: 25px; padding-top: 20px; border-top: 1px solid #d4e0ce; }
+.guide-card summary { font-size: 15px; }
+.guide-action { text-align: center; padding: 60px 0 20px; }
+.guide-action p { font-size: 17.5px; color: var(--muted); margin: 0; }
+.guide-action .primary-link { margin-top: 20px; }
+@media (max-width: 1200px) { .data-guide { grid-template-columns: 1fr; } }
+@media (max-width: 675px) { .guide-card { padding: 30px; } .guide-card .guide-period-value { font-size: 26.25px; } #data-content .intro { padding-top: 55px; } }

@@ -10,7 +10,8 @@ import re
 import time
 
 import gpt_api
-from .config import DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, KNOWLEDGE_TOP_K
+from .config import (CONTEXT_CHAR_BUDGET, DEFAULT_TOP_N, DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, KNOWLEDGE_FALLBACK_K,
+                     KNOWLEDGE_SEARCH_LIMIT, KNOWLEDGE_TOP_K, MAX_REGIONS)
 from .data_cache import documents_by_id, load_corpus, load_knowledge
 from .knowledge import _shift
 from .knowledge_index import GUIDE_KINDS, retrieve, validate_knowledge_index
@@ -23,6 +24,7 @@ from .year_query import last_year_answer, resolve_relative_years
 from .declines import declining_regions
 from .period_queries import aggregate_query, negative_concept, correction_query, annual_mean_concept
 from .answer_check import number_issues
+from .answer_cache import ANSWER_CACHE, cache_key
 from .keyboard import keyboard_to_hangul
 from .query_parser import find_cues, find_regions, find_top_n, parse_period, parse_question
 from .expressions import ambiguous_place, rewrite
@@ -237,10 +239,13 @@ def _reject_guessed_parent(ids, question, catalog):
             raise ValueError(f"지역 '{region['name']}'을 확정할 수 없습니다. 시도와 시군구를 함께 입력해주세요.{labels}")
 
 
-def _limit(ids):
-    if len(ids) > 5:
-        raise ValueError('한 번에 5개 지역까지 조회하세요.')
-    return ids
+def _limit(ids, analysis=None):
+    """지역이 MAX_REGIONS곳을 넘으면 오류 대신 앞의 MAX_REGIONS곳만 계산하고 그 사실을 analysis에 남깁니다."""
+    if len(ids) <= MAX_REGIONS:
+        return ids
+    if analysis is not None:
+        analysis['region_note'] = f'지역이 {len(ids)}곳이라 질문에 적힌 순서대로 앞의 {MAX_REGIONS}곳만 계산했습니다.'
+    return ids[:MAX_REGIONS]
 
 
 def _normalized(question):
@@ -324,20 +329,72 @@ def _year_only(question, analysis):
     return str(next(iter(years))) if len(years) == 1 else None
 
 
+def _fit_budget(contexts, budget=CONTEXT_CHAR_BUDGET):
+    """GPT에 넘기는 근거 본문을 budget 글자 안으로 줄입니다 (토큰 소모는 여기서만 제어).
+
+    직접 조회한 원본 문서(pool 없음)를 먼저 두고, 지식 검색 보강 문서는 남는 만큼만 붙입니다.
+    그래도 넘치면 긴 문서(예: 20개 지역의 추이 문서)를 같은 길이로 잘라 냅니다. 핵심 수치는 verified_facts에 있습니다.
+    """
+    if sum(len(c['text']) for c in contexts) <= budget:
+        return contexts
+    kept = [c for c in contexts if 'pool' not in c]
+    used = sum(len(c['text']) for c in kept)
+    for c in contexts:
+        if 'pool' in c and used + len(c['text']) <= budget:
+            kept.append(c)
+            used += len(c['text'])
+    if used <= budget or not kept:
+        return kept
+    remaining, cap = budget, None
+    for i, length in enumerate(sorted(len(c['text']) for c in kept)):
+        share = remaining // (len(kept) - i)
+        if length > share:
+            cap = max(200, share)
+            break
+        remaining -= length
+    return [c if cap is None or len(c['text']) <= cap else
+            {**c, 'text': c['text'][:cap] + '\n…(분량 제한으로 이하 생략. 수치는 verified_facts 기준)'} for c in kept]
+
+
+def _fallback_answer(contexts, display, facts, error):
+    """답변 생성(GPT)이 실패해도 이미 확보한 계산값·근거 원문으로 답합니다."""
+    if facts:
+        body = '원본 데이터로 계산한 결과입니다.\n' + '\n'.join('- ' + f for f in facts)
+    else:
+        text = contexts[0]['text']
+        body = '질문과 가장 가까운 지식 문서 내용입니다.\n' + (text[:700] + '…' if len(text) > 700 else text)
+    return {'answer': body + '\n\n※ 문장형 답변 생성이 완료되지 않아 계산값·문서 원문으로 안내했습니다. '
+                             '잠시 후 다시 질문하면 문장형 답변을 받을 수 있습니다.',
+            'model': None, 'unit': display, 'used_context_ids': [c['id'] for c in contexts],
+            'error_type': type(error).__name__}
+
+
 def _generate(question, contexts, analysis, display, facts, timings):
     """답변을 만든 뒤 문장 속 변동률(%)을 근거와 대조합니다.
 
     부호가 뒤집혔거나 근거에 없는 값이 있으면 오류 목록을 알려 주고 1회 다시 쓰게 합니다.
-    그래도 맞지 않으면 답변 끝에 확인 안내를 붙입니다. 결과는 analysis['answer_check']에 남습니다.
+    그래도 맞지 않으면 답변 끝에 확인 안내를 붙입니다. 생성 자체가 실패하면 계산값·원문으로 대체합니다.
+    결과는 analysis['answer_check'](ok·corrected·warning·fallback)에 남습니다.
     """
-    result = _timed(timings, '답변생성', gpt_api.generate_answer, question, contexts, analysis, display, facts)
+    prompt_contexts = _fit_budget(contexts)
+    if prompt_contexts is not contexts:
+        analysis['context_trimmed'] = True
+    try:
+        result = _timed(timings, '답변생성', gpt_api.generate_answer, question, prompt_contexts, analysis, display, facts)
+    except Exception as error:
+        analysis['answer_check'] = 'fallback'
+        analysis['generation_error'] = type(error).__name__
+        return _fallback_answer(contexts, display, facts, error)
     evidence = [question, *facts, *(c['text'] for c in contexts)]
     issues = number_issues(result['answer'], evidence)
     analysis['answer_check'] = 'ok'
     if issues:
-        result = _timed(timings, '답변재생성', gpt_api.generate_answer, question, contexts, analysis, display, facts,
-                        correction=issues)
-        issues = number_issues(result['answer'], evidence)
+        try:
+            result = _timed(timings, '답변재생성', gpt_api.generate_answer, question, prompt_contexts, analysis, display,
+                            facts, correction=issues)
+            issues = number_issues(result['answer'], evidence)
+        except Exception as error:
+            analysis['generation_error'] = type(error).__name__  # 첫 답변을 유지하고 아래 확인 안내를 붙입니다
         analysis['answer_check'] = 'corrected'
         if issues:
             analysis['answer_check'] = 'warning'
@@ -359,7 +416,8 @@ def explain(question, analysis, corpus, collection, catalog, display, region_id=
             top_k=None):
     """서술 경로: 지식 색인 벡터 검색 → 검색 근거만으로 답변."""
     timings = {} if timings is None else timings
-    ids = _limit(_narrow_ids(_resolve_ids(analysis['region_names'], question, catalog, region_id), 'explain', question, catalog))
+    ids = _limit(_narrow_ids(_resolve_ids(analysis['region_names'], question, catalog, region_id), 'explain', question, catalog),
+                 analysis)
     month = next((m for m in (analysis['month'], analysis['end_month']) if m in corpus.months), None)
     year = None
     if analysis['start_month'] and analysis['end_month'] and analysis['start_month'][:4] == analysis['end_month'][:4]:
@@ -377,14 +435,18 @@ def explain(question, analysis, corpus, collection, catalog, display, region_id=
     # 지역이나 기간이 정해지면 해당 프로필·시장 요약은 조건 검색으로 가져오므로, 의미 검색은 안내 문서로 한정합니다.
     # (제한하지 않으면 비슷한 형식의 다른 월 시장 요약이 질문과 무관하게 섞여 들어옵니다.)
     general_kinds = GUIDE_KINDS if (ids or month or year) else None
+    # 후보는 넉넉히 검색하고(로컬 검색이라 비용 없음), GPT에 넘기는 분량은 _generate의 _fit_budget에서 제한합니다.
     hits, diagnostics = _timed(timings, '임베딩·검색', retrieve, collection, query, region_ids=ids, month=month,
                                year=year, general_k=top_k or KNOWLEDGE_TOP_K, general_kinds=general_kinds,
-                               embedder=embedder)
+                               embedder=embedder, limit=KNOWLEDGE_SEARCH_LIMIT, fallback_k=KNOWLEDGE_FALLBACK_K)
     analysis.update(route='explain', resolved_region_ids=ids, knowledge_month=month, knowledge_year=year,
-                    retrieval=diagnostics, display_unit=display)
+                    retrieval=diagnostics, display_unit=display, retrieval_fallback=bool(diagnostics.get('fallback')))
     if not hits:
-        return {'answer': '질문과 관련된 근거 문서를 지식 색인에서 찾지 못했습니다. 지역·기간을 함께 적거나, '
-                          '가격·비교·추이·순위처럼 데이터로 확인할 수 있는 질문으로 다시 입력해 주세요.',
+        months = corpus.months
+        return {'answer': '질문과 관련된 근거 문서를 지식 색인에서 찾지 못했습니다.\n'
+                          f'BuBot은 {months[0]} ~ {months[-1]} 아파트 월평균 매매가격으로 지역별 가격·비교·추이·순위와 '
+                          '데이터·용어 설명을 답합니다. 지역과 기간을 함께 적어 주세요. '
+                          "예: '서울 최근 1년 변동률', '부산과 대구 가격 비교', '경기 시군구 가격 순위'",
                 'analysis': analysis, 'contexts': [], 'facts': [], 'sources': [], 'route': 'explain',
                 'timings': timings}
     result = _generate(question, hits, analysis, display, [], timings)
@@ -412,6 +474,24 @@ def _clarify_fallback(question, catalog, months):
                   else 'compare' if len(regions) > 1 else 'lookup')
     return {'intent': intent, 'region_names': [catalog[r]['label'] for r in regions], 'message': '',
             'level': frame.level or '시군구'}
+
+
+def _analysis_from_code(question, catalog, months):
+    """질문 분석 API가 실패했을 때 코드 해석만으로 만든 분석 결과. 지역을 확정하지 못하면 None."""
+    frame = _clarify_fallback(question, catalog, months)
+    if not frame:
+        return None
+    period = parse_question(question, catalog, months).period
+    raw = {'intent': 'clarify', 'region_names': [], 'month': None, 'start_month': None, 'end_month': None,
+           'display_unit': None, 'level': '시군구', 'rewritten_query': question, 'message': '', **frame}
+    if period.kind == 'point' and period.month in months:
+        raw['month'] = period.month
+    elif period.kind == 'range' and period.start in months and period.end in months:
+        raw.update(start_month=period.start, end_month=period.end)
+    try:
+        return Analysis.model_validate(raw).model_dump()
+    except Exception:
+        return None
 
 
 def _with_notes(result, notes):
@@ -467,7 +547,18 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
         return coverage
     catalog=region_catalog(corpus)
     timings={}
-    analysis=Analysis.model_validate(_timed(timings,'질문분석',gpt_api.analyze_query,question,catalog,corpus.months)).model_dump()
+    fallback_reason=None
+    try:
+        raw=_timed(timings,'질문분석',gpt_api.analyze_query,question,catalog,corpus.months)
+    except Exception as error:
+        # 질문 분석 API가 실패해도 코드 해석(query_parser)으로 지역이 확정되면 계속 답합니다.
+        raw=_analysis_from_code(question,catalog,corpus.months)
+        if raw is None:
+            raise
+        fallback_reason=type(error).__name__
+    analysis=Analysis.model_validate(raw).model_dump()
+    if fallback_reason:
+        analysis['analysis_fallback']=fallback_reason
     if analysis['intent']=='clarify':
         analysis.update(_clarify_fallback(question,catalog,corpus.months))
     if analysis['intent']=='clarify':
@@ -491,7 +582,7 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
         text=_normalized(question)
         names=list(dict.fromkeys(filter(None, (_written_scope(n, text) for n in _clean_names(names)))))
     named=_resolve_ids(names, question, catalog, region_id)
-    ids=_limit(_narrow_ids(named, intent, question, catalog, analysis['level']))
+    ids=_limit(_narrow_ids(named, intent, question, catalog, analysis['level']), analysis)
     if intent=='compare' and len(ids)==1 and len(named)>1:
         intent=analysis['intent']='lookup'  # 상위 지역을 정리하고 나니 한 지역 조회
     if intent in {'lookup','trend','compare'} and not ids:
@@ -533,8 +624,8 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     if intent in {'argmax','argmin'}:
         if len(ids)>1:
             raise ValueError('순위 조회 범위는 한 지역씩 지정하세요.')
-        # '구별 순위·랭킹'은 전체 순위, 'top 10'은 그 개수, 그 외(가장 비싼 곳)는 상위 5곳
-        top_n=find_top_n(question) or (30 if FULL_RANKING.search(question) else 5)
+        # '구별 순위·랭킹'은 전체 순위, 'top 10'은 그 개수, 그 외(가장 비싼 곳)는 상위 DEFAULT_TOP_N곳
+        top_n=find_top_n(question) or (30 if FULL_RANKING.search(question) else DEFAULT_TOP_N)
         aggregate=(argmax_price if intent=='argmax' else argmin_price)({
             'month':target_month,'region_id':ids[0] if ids else None,'level':analysis['level'],'top_n':top_n})
         if aggregate.get('error'):
@@ -564,10 +655,16 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
         raise ValueError('조건에 맞는 근거 데이터가 없습니다.')
     if period_note:
         facts.insert(0, period_note)
-    # 지식 색인 검색으로 보강: 최신 월 기준 지역 프로필, 순위 월의 시장 요약, 의미상 가까운 안내 문서
-    support, diagnostics = _timed(timings, '임베딩·검색', retrieve, collection, analysis['rewritten_query'] or question,
-                                  region_ids=profile_ids, month=knowledge_month, general_k=2,
-                                  general_kinds=GUIDE_KINDS, embedder=embedder)
+    if analysis.get('region_note'):
+        facts.insert(0, analysis['region_note'])
+    # 지식 색인 검색으로 보강: 최신 월 기준 지역 프로필, 순위 월의 시장 요약, 의미상 가까운 안내 문서.
+    # 보강은 부가 근거이므로 검색이 실패해도(임베딩 API 오류 등) 원본 계산값으로 답합니다.
+    try:
+        support, diagnostics = _timed(timings, '임베딩·검색', retrieve, collection, analysis['rewritten_query'] or question,
+                                      region_ids=profile_ids, month=knowledge_month, general_k=3,
+                                      general_kinds=GUIDE_KINDS, embedder=embedder, limit=KNOWLEDGE_SEARCH_LIMIT)
+    except Exception as error:
+        support, diagnostics = [], {'used': [], 'rejected': [], 'error': type(error).__name__}
     analysis.update(route='numeric', resolved_region_ids=ids, resolved_month=target_month,
                     resolved_start=start,resolved_end=end,display_unit=display, retrieval=diagnostics)
     contexts=contexts+support
@@ -656,8 +753,14 @@ def _converse(question, history=None, **kwargs):
                     if previous and not ambiguous:
                         standalone=previous['label']+' '+standalone
                         break
+    key = cache_key(standalone, kwargs, load_corpus().source_hash)
     try:
-        result = _ask(standalone, **kwargs)
+        result = ANSWER_CACHE.get(key)
+        if result is None:
+            result = _ask(standalone, **kwargs)
+            ANSWER_CACHE.put(key, result)
+        else:
+            result['cached'] = True  # 같은 단독 질문의 이전 결과 (답변 일관성)
     except ValueError as error:
         candidates = str(error).split('입력해주세요.', 1)[-1].strip() if AMBIGUOUS_REGION in str(error) else ''
         if candidates:

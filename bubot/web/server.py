@@ -10,6 +10,7 @@ from pathlib import Path
 from threading import Lock
 from urllib.parse import unquote, urlsplit
 from . import service, history
+from .layout import render_layout
 
 ROOT = Path(__file__).resolve().parents[2] / "web"
 BUSY = Lock()
@@ -60,7 +61,11 @@ class Handler(BaseHTTPRequestHandler):
         if not path.is_relative_to(ROOT.resolve()) or not path.is_file():
             return self.send(404, {"error": "파일을 찾을 수 없습니다."})
         mime = "text/javascript" if path.suffix == ".js" else mimetypes.guess_type(str(path))[0] or "application/octet-stream"
-        self.send(200, path.read_bytes(), mime + "; charset=utf-8")
+        body = path.read_bytes()
+        if path.suffix == ".html":
+            active = "data" if path.name == "data.html" else "home"
+            body = render_layout(body.decode("utf-8-sig"), active).encode("utf-8")
+        self.send(200, body, mime + "; charset=utf-8")
 
     def do_POST(self):
         if not self.trusted():

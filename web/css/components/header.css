@@ -1,0 +1,7 @@
+header { display: flex; justify-content: space-between; align-items: center; gap: 15px; min-height: 85px; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--muted); }
+header > span:first-child { display: inline-flex; align-items: center; gap: 10px; padding: 7.5px 15px 7.5px 12.5px; border-radius: 999px; background: #eef4ec; color: #345f46; font-weight: 600; letter-spacing: -.1px; }
+header > span:first-child::before { content: ""; width: 7.5px; height: 7.5px; border-radius: 50%; background: #77a66c; }
+.text-button { display: inline-flex; align-items: center; gap: 7.5px; padding: 11.25px 18.75px; border: 1px solid #d2ddd3; border-radius: 11.25px; background: transparent; color: #345f46; font-size: 15px; white-space: nowrap; }
+.text-button > span { font-size: 23.75px; line-height: 1; }
+.text-button:hover:not(:disabled) { background: #eaf1e8; border-color: #93b39b; }
+@media (max-width: 950px) { header { min-height: 70px; } header > span:first-child { font-size: 13.75px; } }

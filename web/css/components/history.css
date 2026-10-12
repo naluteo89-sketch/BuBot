@@ -1,0 +1,11 @@
+.history-count { font-size: 15px; color: var(--muted); }
+.history-card { margin: 0 0 22.5px; border: 1px solid var(--line); border-radius: 17.5px; background: white; padding: 30px; overflow-wrap: anywhere; }
+.history-card small { color: var(--muted); font-size: 13.75px; }
+.history-card h2 { font-size: 21.25px; line-height: 1.7; margin: 15px 0; }
+.history-card pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 17.5px/1.9 "Segoe UI", "Malgun Gothic", sans-serif; }
+.history-empty { padding: 75px 25px; text-align: center; background: white; border: 1px solid var(--line); border-radius: 20px; }
+.history-empty > span { font-size: 50px; color: #749877; }
+.history-empty h2 { font-size: 25px; }
+.history-empty p { color: var(--muted); font-size: 16.25px; line-height: 1.9; }
+.primary-link { display: inline-block; padding: 15px 22.5px; background: var(--accent); color: white; border-radius: 11.25px; margin-top: 22.5px; font-size: 16.25px; }
+.primary-link:hover { background: #194f3b; }

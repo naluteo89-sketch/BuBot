@@ -1,0 +1,16 @@
+.examples { margin-top: 42.5px; }
+.examples h2 { text-align: center; font-size: 16.5px; font-weight: 500; color: var(--muted); margin: 0 0 20px; }
+.suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17.5px; }
+.suggestions button { position: relative; text-align: left; background: transparent; border: 1px solid var(--line); border-radius: 15px; padding: 22.5px; display: flex; flex-direction: column; gap: 8.75px; color: var(--ink); }
+.suggestions button:hover:not(:disabled) { transform: translateY(-2.5px); background: #fff; border-color: #99b59a; }
+.suggestion-number { display: none; }
+.suggestions strong { font-size: 18px; font-weight: 600; }
+.suggestion-description { color: var(--muted); font-size: 16.5px; line-height: 1.7; }
+.suggestion-arrow { position: absolute; top: 16.25px; right: 17.5px; color: #7e977d; }
+@media (max-width: 675px) {
+  .suggestions { grid-template-columns: 1fr; gap: 10px; }
+  .suggestions button { display: grid; grid-template-columns: 80px 1fr; gap: 8.75px; align-items: center; padding: 17.5px; }
+  .suggestion-description { padding-right: 15px; }
+  .suggestion-arrow { right: 15px; top: 50%; transform: translateY(-50%); }
+}
+@media (max-width: 480px) { .examples h2 { font-size: 13px; } .suggestions button { grid-template-columns: 72px 1fr; } .suggestions strong { font-size: 14px; } .suggestion-description { font-size: 13px; } }
