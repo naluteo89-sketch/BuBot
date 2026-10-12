@@ -1,0 +1,85 @@
+name: Version Update
+description: 새 버전 릴리즈 및 업데이트 작업
+title: "[Release] vX.X.X - "
+labels: ["release", "version"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 버전 업데이트 이슈
+        새 버전 릴리즈를 준비하고 배포 내역을 기록합니다.
+
+  - type: input
+    id: new_version
+    attributes:
+      label: 새 버전 (New Version)
+      description: 릴리즈할 버전을 입력하세요. (SemVer 권장)
+      placeholder: "예: v1.3.0"
+    validations:
+      required: true
+
+  - type: input
+    id: prev_version
+    attributes:
+      label: 이전 버전 (Previous Version)
+      placeholder: "예: v1.2.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: update_type
+    attributes:
+      label: 업데이트 유형
+      options:
+        - Major (호환성 깨짐)
+        - Minor (기능 추가)
+        - Patch (버그 수정)
+        - Hotfix (긴급 패치)
+        - Dependency bump (의존성 갱신)
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: 변경 사항 (Changelog)
+      description: 이번 버전에 포함된 주요 변경 사항을 정리하세요.
+      placeholder: |
+        - Added: 신규 기능 A
+        - Changed: B 로직 개선
+        - Fixed: C 버그 수정
+    validations:
+      required: true
+
+  - type: textarea
+    id: breaking
+    attributes:
+      label: Breaking Changes
+      description: 하위 호환성을 깨는 변경이 있다면 작성하세요. 없으면 "없음".
+      placeholder: "예: API 응답 포맷 변경 (/v1 → /v2)"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 릴리즈 체크리스트
+      options:
+        - label: 버전 번호 갱신 (package.json, pyproject.toml 등)
+        - label: CHANGELOG.md 업데이트
+        - label: README 및 문서 반영
+        - label: 테스트 통과 확인
+        - label: 태그 생성 (git tag)
+        - label: 릴리즈 노트 작성
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 참고 자료
+      description: 관련 PR, 이슈, 커밋 등을 첨부하세요.
+      placeholder: "#123, #124"
+    validations:
+      required: false
