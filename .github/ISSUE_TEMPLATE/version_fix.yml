@@ -4,13 +4,13 @@ title: "[Fix] vX.X.X - "
 labels: ["fix", "version"]
 assignees: []
 body:
-  - 입력: markdown
+  - type: markdown
     attributes:
       value: |
         ## 버전 픽스 이슈
         특정 버전에서 발견된 버그를 수정하고 패치 내역을 기록합니다.
 
-  - 입력: input
+  - type: input
     id: affected_version
     attributes:
       label: 영향받는 버전 (Affected Version)
@@ -19,7 +19,7 @@ body:
     validations:
       required: true
 
-  - 입력: input
+  - type: input
     id: fixed_version
     attributes:
       label: 수정 대상 버전 (Fix Version)
@@ -28,7 +28,7 @@ body:
     validations:
       required: true
 
-  - 입력: textarea
+  - type: textarea
     id: summary
     attributes:
       label: 버그 요약
@@ -37,7 +37,7 @@ body:
     validations:
       required: true
 
-  - 입력: textarea
+  - type: textarea
     id: cause
     attributes:
       label: 원인 (Cause)
@@ -45,7 +45,7 @@ body:
     validations:
       required: false
 
-  - 입력: textarea
+  - type: textarea
     id: solution
     attributes:
       label: 수정 내용 (Solution)
@@ -53,7 +53,7 @@ body:
     validations:
       required: true
 
-  - 입력: dropdown
+  - type: dropdown
     id: severity
     attributes:
       label: 심각도
@@ -65,7 +65,7 @@ body:
     validations:
       required: true
 
-  - 입력: checkboxes
+  - type: checkboxes
     id: checklist
     attributes:
       label: 체크리스트
@@ -76,7 +76,7 @@ body:
     validations:
       required: false
 
-  - 입력: textarea
+  - type: textarea
     id: references
     attributes:
       label: 참고 자료
