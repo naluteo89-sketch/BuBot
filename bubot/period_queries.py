@@ -61,7 +61,8 @@ def response(answer, facts=(), docs=(), **analysis):
 def aggregate_query(question, corpus, unit):
     negative=bool(re.search('하락|음수|마이너스|내린|떨어',question) and re.search('지역|곳|어디',question))
     bounds=period(question,corpus.months,inclusive=not negative)
-    mean=bool(re.search(r'평균|매매가|가격|거래\s*데이터',question) and not re.search('변동|상승|하락|최고|최저|비교|차이|각각|추이|연말|12월 기준',question))
+    # '평균'을 물을 때만 기간 평균입니다. '2020년 1월부터 2023년 12월까지 알려줘'는 평균 하나가 아니라 월별 값(추이)입니다.
+    mean=bool(re.search(r'평균',question) and not re.search('변동|상승|하락|최고|최저|비교|차이|각각|추이|연말|12월 기준',question))
     if not bounds or not (negative or mean):return None
     start,end=bounds
     # 단일 월 가격은 기존 정확 조회 경로로 보냅니다.

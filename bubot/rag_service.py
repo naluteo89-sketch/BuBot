@@ -109,7 +109,8 @@ def apply_relative_period(question, analysis, months):
                 analysis.update(month=written.month, start_month=None, end_month=None)
             elif written.kind == 'range':
                 analysis.update(start_month=written.start, end_month=written.end, month=None)
-                if analysis['intent'] == 'lookup':
+                # 기간이 있는 비교도 추이로 계산합니다. compare는 한 달 값만 써서 '2020~2023년 비교'에 최신 월 값이 나왔습니다.
+                if analysis['intent'] in ('lookup', 'compare'):
                     analysis['intent'] = 'trend'
             if analysis['intent'] == 'explain' and 'explain' not in cues and analysis['region_names']:
                 # '2016년 8월 서울 집값'은 서술이 아니라 원본 가격 조회입니다
@@ -658,6 +659,30 @@ def _locate(question, kwargs):
     return None
 
 
+def _unavailable(question, months):
+    """자료로 답할 수 없는 질문을 GPT 호출 전에 안내합니다. 해당 없으면 None.
+
+    - 특정 단지·개별 실거래가 (자료는 지역 월평균): '래미안 실거래가'에 강남구 평균을 단지 가격처럼 답하던 문제
+    - 보유 기간 뒤의 시점: '2027년 3월'에 최신 2026-08 값으로 대신 답하던 문제
+    후속 질문 재구성(GPT)이 '실거래가'를 '매매가격'으로 바꾸기 전, 사용자가 쓴 원래 질문에도 적용합니다.
+    """
+    text = out_of_scope(question)
+    if text:
+        return {'answer': text, 'analysis': {'intent': 'clarify', 'reason': 'out_of_scope'},
+                'contexts': [], 'facts': [], 'sources': [], 'route': 'rule', 'choices': []}
+    written = parse_period(question, months)
+    if written.beyond:
+        when = f'{int(written.beyond[:4])}년 {int(written.beyond[5:])}월'
+        text = (f'{when}({written.beyond}) 자료는 없습니다. 보유 기간은 {months[0]} ~ {months[-1]}이며, '
+                '보유 기간 이후의 가격은 예측하거나 최신 월 값으로 대신 답하지 않습니다. '
+                f"최신 값은 '{int(months[-1][:4])}년 {int(months[-1][5:])}월 가격'처럼 보유한 월로 물어보세요.")
+        if '지수' in question:
+            text += ' 참고로 이 자료는 매매가격지수가 아니라 지역별 아파트 월평균 매매가격입니다.'
+        return {'answer': text, 'analysis': {'intent': 'clarify', 'reason': 'beyond_data', 'requested': written.beyond},
+                'contexts': [], 'facts': [], 'sources': [], 'route': 'rule', 'choices': []}
+    return None
+
+
 def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, unit=None, embedder=None):
     if not isinstance(question,str) or not 1<=len(question.strip())<=1000 or (top_k is not None and not 1<=top_k<=50):
         raise ValueError('질문은 1~1000자, 검색 개수는 1~50개여야 합니다.')
@@ -668,7 +693,10 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     if clarification:
         return {'answer': clarification, 'analysis': {'intent': 'clarify', 'reason': 'ambiguous_region'},
                 'contexts': [], 'facts': [], 'sources': []}
-    unanswerable = out_of_scope(question) or ambiguous_place(question)
+    blocked = _unavailable(question, corpus.months) if month is None else None
+    if blocked:
+        return blocked
+    unanswerable = ambiguous_place(question)
     if unanswerable:
         place = ambiguous_place_candidates(question)
         choices = _candidate_choices(question, place[0], [_label_of(c) for c in place[1]]) if place else []
@@ -866,6 +894,10 @@ def ask(question, history=None, **kwargs):
     바꾼 내용을 답변 끝에 안내합니다.
     """
     question, notes = _rewritten(question)
+    if '지수' in question:
+        # 자료는 평균 매매가격(금액)입니다. '서울 지수'에 금액을 지수처럼 소개하지 않도록 밝힙니다.
+        notes = [*notes, "질문의 '지수'는 매매가격지수 값이 아니라 지역별 아파트 월평균 매매가격(금액)으로 답했습니다. "
+                         '이 서비스는 지수 값을 제공하지 않습니다.']
     return _with_notes(_converse(question, history, **kwargs), notes)
 
 
@@ -896,6 +928,10 @@ def _converse(question, history=None, **kwargs):
                          '기준 가격이 0이면 이 식으로 변동률을 계산할 수 없습니다.',
                 'analysis':{'intent':'concept'},'facts':[],'sources':[],'contexts':[],
                 'route':'rule','standalone_question':question,'followup':False,'timings':{}}
+    # 재구성(GPT) 전에 원래 질문으로 확인합니다 ('실거래가'가 '매매가격'으로 바뀌면 단지 질문을 놓침).
+    blocked=_unavailable(question,load_corpus().months) if history else None
+    if blocked is not None:
+        return {**blocked,'standalone_question':question,'followup':False,'timings':{}}
     correction=correction_query(question,history,load_corpus(),kwargs.get('unit') or DISPLAY_PRICE_UNIT) if history else None
     if correction is not None:
         return display_sources({**correction,'standalone_question':question,'followup':True,'timings':{}})

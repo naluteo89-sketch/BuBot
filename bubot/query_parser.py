@@ -45,6 +45,7 @@ class Period:
     year: str | None = None
     notes: list = field(default_factory=list)
     spans: list = field(default_factory=list)
+    beyond: str | None = None  # 질문에 적힌 시점이 보유 기간 뒤 (예: '2027년 3월') → 최신 월로 대신 답하지 않음
 
     @property
     def explicit(self):
@@ -215,11 +216,14 @@ def _fit_to_data(period, first, latest):
     """보유 기간 밖의 시점을 데이터 안으로 맞추고 안내 문구를 남깁니다."""
     if period.kind == 'point' and period.month:
         if period.month > latest:
+            period.beyond = period.month
             period.notes.append(f"{period.month} 자료는 아직 없어 최신 {latest} 기준으로 답합니다.")
             period.month = latest
     elif period.kind == 'range' and period.start and period.end:
         if period.start > period.end:
             period.start, period.end = period.end, period.start
+        if period.start > latest:
+            period.beyond = period.start
         if period.end > latest:
             period.notes.append(f"{period.end} 자료는 아직 없어 {latest}까지로 계산합니다.")
             period.end = latest
