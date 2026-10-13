@@ -30,8 +30,9 @@ BuBot은 사용자가 자연어로 질문하면 아파트 평균 매매가격을
 - [x] 실행방법과 테스트 결과 정리
 - [x] 최종 버전 저장 및 정확성·일관성 검증 결과에 따라 1차 제작 완료 판단
 
-### 
-- [ ] 차트 데이터 추가 보류 
+### 추가 업데이트 대기
+- [ ] 차트 데이터
+- [ ]  dataset, api 추가하여 검색 다양화 
 
 
 <img width="576" height="387" alt="image" src="https://github.com/user-attachments/assets/e21da11c-2402-4d9c-9d14-c7d370b8dd97" />
