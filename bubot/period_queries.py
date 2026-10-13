@@ -89,8 +89,14 @@ def aggregate_query(question, corpus, unit):
         return response(title+'\n\n'+('\n'.join(facts) or '비교 가능한 지역 중 하락한 지역은 없습니다.'),facts,[d for _,_,a,b in rows for d in (a,b)],intent='period_decline',resolved_start=start,resolved_end=end,count=len(rows),excluded=missing,candidates=len(allowed)-missing)
     present=[m for m in corpus.months if start<=m<=end]
     if not present:return response(f'{start[:4]}년에 해당하는 데이터는 현재 원본 CSV에 없습니다. 요청 기간: {start} ~ {end}. 보유 기간: {corpus.months[0]} ~ {corpus.months[-1]}.',intent='clarify')
+    # 2026년처럼 진행 중인 연도는 12개월을 채우지 않고 보유한 월(1월 ~ 최신 월)까지의 평균으로 계산합니다.
+    requested_end=end
+    start,end=max(start,present[0]),min(end,present[-1])
+    clipped=end<requested_end
+    one_year=start[:4]==end[:4]==requested_end[:4]
     if not scope:
-        return response(f'{start} ~ {end} 중 {len(present)}개월 자료가 있습니다. 보유 월: '+ '·'.join(str(int(m[5:]))+'월' for m in present) + ('만 있습니다. ' if len(present)<12 else '입니다. ') + f' 어느 지역의 평균매매가격을 조회할까요? 개별 거래 기록이 아닌 월평균 가격 자료입니다.',intent='clarify')
+        basis=f'{start[:4]}년 평균은 {int(end[5:])}월까지 보유한 {len(present)}개월 값의 합 ÷ {len(present)}로 계산합니다. ' if one_year and clipped else ''
+        return response(f'{start} ~ {end} 중 {len(present)}개월 자료가 있습니다. 보유 월: '+ '·'.join(str(int(m[5:]))+'월' for m in present) + ('만 있습니다. ' if len(present)<12 else '입니다. ') + basis + '어느 지역의 평균매매가격을 조회할까요? 개별 거래 기록이 아닌 월평균 가격 자료입니다.',intent='clarify')
     selected=sorted([d for d in corpus.documents if d.metadata['kind']=='monthly' and d.metadata['region_id']==scope['id'] and d.metadata['month'] in present],key=lambda d:d.metadata['month'])
     valid=[d for d in selected if d.metadata.get('price_thousand_krw') is not None]
     if not valid:return response(f'{scope["label"]}의 요청 기간 값은 모두 결측입니다.',docs=selected,intent='clarify')
@@ -99,8 +105,13 @@ def aggregate_query(question, corpus, unit):
     expected=(int(end[:4])-int(start[:4]))*12+int(end[5:])-int(start[5:])+1
     facts=[f"{d.metadata['month']}: {format_price(d.metadata['price_thousand_krw'],unit)}" for d in valid]
     facts.append(f'월평균 가격 합계 {format_price(total,unit)} ÷ {len(valid)}개월 = {format_price(rounded,unit)} (원 단위 반올림)')
-    answer=f'{scope["label"]} {start} ~ {end}의 월평균 매매가격을 단순 평균하면 {format_price(rounded,unit)}입니다. 요청 {expected}개월 중 유효값 {len(valid)}개월을 사용했습니다. '
-    if len(valid)<expected:answer+='일부 월이 없어 전체 기간 평균이 아닌 보유 유효 월의 평균입니다. '
+    if clipped and one_year:
+        answer=(f'{scope["label"]} {start[:4]}년 평균 매매가격은 {int(end[5:])}월까지의 자료({start} ~ {end}, {expected}개월) 기준으로 {format_price(rounded,unit)}입니다. '
+                f'보유한 {len(valid)}개월의 월평균 가격 합계를 {len(valid)}로 나눈 단순 평균입니다. ')
+    else:
+        until=f' (보유 최신 월 {end}까지)' if clipped else ''
+        answer=f'{scope["label"]} {start} ~ {end}{until}의 월평균 매매가격을 단순 평균하면 {format_price(rounded,unit)}입니다. {expected}개월 중 유효값 {len(valid)}개월을 사용했습니다. '
+    if len(valid)<expected:answer+='일부 월 값이 비어 있어 유효한 월만으로 나눈 평균입니다. '
     answer+='12월 한 달의 값이 아니며, 거래 건수로 가중한 실거래 평균도 아닙니다.'
     return response(answer,facts,valid,intent='period_mean',resolved_region_ids=[scope['id']],resolved_start=start,resolved_end=end,mean_thousand=str(average),valid_months=len(valid))
 

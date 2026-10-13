@@ -102,3 +102,14 @@ aside { position: sticky; }
   .nav-menu { right: 0; }
 }
 @media (max-width: 480px) { .nav-menu-button { width: 30px; height: 30px; font-size: 15px; } .nav-menu button { font-size: 14px; } }
+
+/* AI 연결 신호등 (사이드바 하단) */
+.api-light { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 14px; color: #d6e6d9; }
+.api-light .lamp { width: 11px; height: 11px; border-radius: 50%; background: #2b443f; box-shadow: inset 0 0 0 1px #46655e; transition: background .3s, box-shadow .3s; }
+.api-light-text { margin-left: 6px; }
+.api-light[data-level="red"] .lamp.red { background: #e5544b; box-shadow: 0 0 8px #e5544b; }
+.api-light[data-level="yellow"] .lamp.yellow { background: #f2c14e; box-shadow: 0 0 8px #f2c14e; }
+.api-light[data-level="green"] .lamp.green { background: #5fd17a; box-shadow: 0 0 8px #5fd17a; }
+.api-light[data-level="checking"] .lamp { animation: api-light-blink 1.2s infinite alternate; }
+@keyframes api-light-blink { to { background: #46655e; } }
+@media (prefers-reduced-motion: reduce) { .api-light[data-level="checking"] .lamp { animation: none; } }

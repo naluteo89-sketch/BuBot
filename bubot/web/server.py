@@ -100,6 +100,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, {"records": history.records(None if route.endswith("/export") else 100)})
             except Exception:
                 return self.send(503, {"error": "저장된 기록을 불러오지 못했습니다."})
+        if route == "/api/health":
+            try:
+                return self.send(200, service.api_health())
+            except Exception:
+                return self.send(200, {"level": "red", "message": "AI 연결 상태를 확인하지 못했어요", "latency": None})
         if route == "/api/status":
             try:
                 return self.send(200, service.status())

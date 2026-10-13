@@ -50,14 +50,15 @@ def year_coverage(question, months, *, today=None):
             absent = "·".join(f"{m}월" for m in missing)
             lines.append(f"{year}년 데이터는 {label}만 보유하고 있습니다(12개월 중 {len(available)}개월). "
                          f"{absent}은 제공된 원본 CSV에 포함되어 있지 않습니다. "
-                         "따라서 연간 전체 평균이나 연간 최고가로 해석할 수 없습니다.")
+                         f"{year}년 평균은 보유한 {len(available)}개월 값의 합 ÷ {len(available)}로 계산한 "
+                         f"{year}년 {available[-1]}월까지의 평균입니다.")
         else:
             lines.append(f"{year}년은 1월부터 12월까지 데이터가 있습니다.")
     lines.append(f"전체 보유 기간은 {months[0]} ~ {months[-1]}입니다. 지역별로 값이 비어 있는 월은 추가로 있을 수 있습니다.")
     lines.append("이 자료는 지역별 아파트 월평균 매매가격이며, 개별 거래 금액이나 거래 건수 자료가 아닙니다.")
     if any(c["available_months"] for c in coverage):
-        lines.append("보유한 월의 가격은 조회할 수 있습니다. 조회할 지역과 월을 지정해 주세요. "
-                     "보유 월의 평균을 원하면 월평균 가격의 단순 평균인지 먼저 확인해야 하며, 실제 거래 전체의 평균과는 다릅니다.")
+        lines.append("조회할 지역을 알려주시면 보유 월의 가격이나 보유 월까지의 평균을 계산해 드립니다. "
+                     "평균은 월평균 가격의 단순 평균이며, 실제 거래 전체의 평균과는 다릅니다.")
     return {"answer": "\n\n".join(lines),
             "analysis": {"intent": "clarify", "reason": "year_coverage", "coverage": coverage},
             "contexts": [], "facts": [],

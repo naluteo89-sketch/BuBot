@@ -20,7 +20,7 @@ from .regions import ALIASES, region_catalog, resolve_region, gwangju_clarificat
 from .retrieval import argmax_price, argmin_price
 from .schemas import Analysis
 from .coverage import explicit_years, year_coverage
-from .year_query import last_year_answer, region_records, resolve_relative_years
+from .year_query import last_year_answer, named_region, region_records, resolve_relative_years
 from .declines import declining_regions
 from .period_queries import aggregate_query, negative_concept, correction_query, annual_mean_concept
 from .answer_check import number_issues
@@ -694,6 +694,15 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     question = resolve_relative_years(question)
     coverage = year_coverage(question, corpus.months) if month is None else None
     if coverage is not None:
+        # '서울 26년 데이터'처럼 지역이 있으면 안내만 하지 않고 보유 월까지의 평균을 함께 보여줍니다.
+        years = [c['year'] for c in coverage['analysis']['coverage'] if c['available_months']]
+        scope, ambiguous = named_region(question, region_catalog(corpus))
+        if len(years) == 1 and scope and not ambiguous:
+            mean = aggregate_query(f"{scope['label']} {years[0]}년 평균 매매가격", corpus, unit or DISPLAY_PRICE_UNIT)
+            if mean and mean['analysis']['intent'] == 'period_mean':
+                notice = [p for p in coverage['answer'].split('\n\n') if not p.startswith('조회할 지역을')]
+                return {**mean, 'answer': '\n\n'.join(notice + [mean['answer']]),
+                        'sources': coverage['sources'] + mean['sources']}
         return coverage
     catalog=region_catalog(corpus)
     timings={}

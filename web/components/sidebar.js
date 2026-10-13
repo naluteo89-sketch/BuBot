@@ -147,5 +147,30 @@ function setupResizer() {
   });
 }
 
+// ── AI 연결 신호등 ─────────────────────────────────
+// 초록: 정상, 노랑: 느림·한도·서버 오류, 빨강: 연결 끊김·키 문제. 30초마다 확인합니다 (서버가 20초 캐시).
+function setupApiLight() {
+  const light = document.querySelector('#api-light');
+  if (!light) return;
+  const text = light.querySelector('.api-light-text');
+  const show = (level, message) => {
+    light.dataset.level = level;
+    text.textContent = message;
+    light.title = message;
+  };
+  const check = () => {
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000));
+    Promise.race([request('api/health'), timer])
+      .then(data => show(data.level || 'red', data.message || 'AI 연결 상태를 알 수 없어요'))
+      .catch(error => error.message === 'timeout'
+        ? show('yellow', 'AI 연결 확인이 오래 걸려요')
+        : show('red', '서버와 연결이 끊겼어요'));
+  };
+  check();
+  setInterval(() => { if (!document.hidden) check(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+}
+
 setupMenu();
 setupResizer();
+setupApiLight();

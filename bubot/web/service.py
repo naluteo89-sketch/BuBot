@@ -120,6 +120,44 @@ def coverage_note(corpus):
     return note
 
 
+# API 신호등 (사이드바). 초록: 정상 응답, 노랑: 느리거나 한도·서버 오류, 빨강: 키 없음·인증 실패·연결 끊김.
+HEALTH_SLOW_SECONDS = float(os.getenv("BUBOT_HEALTH_SLOW_SECONDS", "3"))
+HEALTH_CACHE_SECONDS = float(os.getenv("BUBOT_HEALTH_CACHE_SECONDS", "20"))
+_health = {"at": None, "result": None}
+_health_lock = Lock()
+
+
+def classify_health(ping):
+    if ping["ok"]:
+        if ping["latency"] is not None and ping["latency"] > HEALTH_SLOW_SECONDS:
+            return "yellow", f"응답이 느려요 ({ping['latency']:.1f}초)"
+        return "green", "AI 연결 정상"
+    code, error = ping.get("status_code"), ping.get("error") or ""
+    if error == "no_key":
+        return "red", "API 키가 설정되지 않았어요"
+    if code in (401, 403):
+        return "red", "API 키 인증에 실패했어요"
+    if code == 429 or (isinstance(code, int) and code >= 500) or "Timeout" in error:
+        return "yellow", "응답 지연 또는 사용 한도 문제가 있어요"
+    if code is not None:
+        return "yellow", f"AI 응답에 문제가 있어요 (HTTP {code})"
+    return "red", "AI 서버와 연결이 끊겼어요"
+
+
+def api_health(now=None, ping=None):
+    """API 연결 상태. 여러 화면이 동시에 물어도 HEALTH_CACHE_SECONDS 동안은 마지막 점검 결과를 씁니다."""
+    now = time.monotonic() if now is None else now
+    with _health_lock:
+        if _health["at"] is not None and now - _health["at"] < HEALTH_CACHE_SECONDS:
+            return _health["result"]
+        if ping is None:
+            from gpt_api import ping_api as ping
+        result = ping()
+        level, message = classify_health(result)
+        _health.update(at=now, result={"level": level, "message": message, "latency": result.get("latency")})
+        return _health["result"]
+
+
 def status():
     from gpt_api import check_configuration
     from bubot.data_cache import load_corpus

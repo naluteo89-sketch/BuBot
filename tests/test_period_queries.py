@@ -55,4 +55,8 @@ class PeriodQueriesTests(unittest.TestCase):
     def test_partial_year_not_claimed_complete(self):
         r=aggregate_query('서울 2026년 평균 가격',load_corpus(),'천원')
         self.assertEqual(r['analysis']['valid_months'],8)
-        self.assertIn('일부 월이 없어',r['answer'])
+        # 진행 중인 연도는 12개월이 아니라 보유한 월(2026-08)까지의 평균으로 안내합니다.
+        self.assertEqual(r['analysis']['resolved_end'],'2026-08')
+        self.assertIn('8월까지의 자료(2026-01 ~ 2026-08, 8개월)',r['answer'])
+        self.assertIn('8로 나눈',r['answer'])
+        self.assertNotIn('12개월 중',r['answer'])

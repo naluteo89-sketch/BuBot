@@ -56,6 +56,27 @@ def create_client():
     return OpenAI(api_key=key, base_url=API_BASE_URL, timeout=30.0, max_retries=API_MAX_RETRIES)
 
 
+
+def ping_api(timeout=8.0):
+    """API 연결 점검: 모델 목록 조회 1건 (토큰 비용 없음). 재시도 없이 한 번만 시도합니다.
+
+    반환: {"ok": bool, "latency": 초, "error": 오류 종류, "status_code": HTTP 상태}
+    """
+    key, _ = resolve_api_key()
+    if not key:
+        return {"ok": False, "latency": None, "error": "no_key", "status_code": None}
+    from openai import OpenAI
+    client = OpenAI(api_key=key, base_url=API_BASE_URL, timeout=timeout, max_retries=0)
+    started = time.perf_counter()
+    try:
+        client.models.retrieve(CHAT_MODEL)
+        return {"ok": True, "latency": round(time.perf_counter() - started, 3), "error": None, "status_code": 200}
+    except Exception as error:
+        return {"ok": False, "latency": round(time.perf_counter() - started, 3),
+                "error": type(error).__name__, "status_code": getattr(error, "status_code", None)}
+    finally:
+        client.close()
+
 _shared = {}
 _shared_lock = threading.Lock()
 _pace = {"last": 0.0}
