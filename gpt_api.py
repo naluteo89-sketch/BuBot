@@ -296,7 +296,7 @@ history는 같은 사용자와의 최근 대화입니다(오래된 것부터). �
 
 
 def generate_answer(question, contexts, analysis=None, unit=None, facts=None, correction=None):
-    """correction: 직전 답변에서 근거와 맞지 않았던 수치 목록 (bubot.answer_check). 있으면 바로잡아 다시 씁니다."""
+    """correction: 직전 답변에서 근거와 맞지 않았던 수치 목록 (bubot.answers.answer_check). 있으면 바로잡아 다시 씁니다."""
     from bubot.config import DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS
     from bubot.pricing import format_price
     unit = unit or DISPLAY_PRICE_UNIT

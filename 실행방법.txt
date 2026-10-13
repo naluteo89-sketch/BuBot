@@ -106,7 +106,7 @@ CSV를 갱신하면 지역 프로필·시장 요약 수치가 바뀌어 해당 �
 
 
 5. 자동시험
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -B -m unittest discover -s tests -v   (-B: __pycache__ 폴더를 만들지 않음)
 실제 유료 API를 호출하지 않습니다 (가짜 임베딩·mock 사용).
 data/new_prices.csv가 있어야 하며, 일부 시험(test_period_queries, test_reported_dialogue 일부)은
 실제 지식 색인을 읽으므로 embed 후에 통과합니다.
@@ -204,14 +204,32 @@ bubot/cli.py                   CLI 명령
 bubot/config.py                설정 기본값
 bubot/rag_service.py           라우터 (수치/서술 경로)
 bubot/conversation.py          대화 메모리
-bubot/answer_cache.py          같은 질문 답변 캐시
-bubot/knowledge.py             지식 문서 생성
-bubot/knowledge_index.py       지식 색인 임베딩·검증·검색
-bubot/vector_store.py          SQLite 벡터 저장소
-bubot/documents.py             CSV → 가격 문서
-bubot/data_cache.py            CSV·지식 문서 캐시 (파일 변경 시 자동 갱신)
-bubot/retrieval.py             가격 순위 집계 (전체 원본 비교, 벡터 검색 아님)
-bubot/period_queries.py 등     기간 평균·하락 지역·연도/지역 해석 규칙
+bubot/regions.py, pricing.py   지역 계층·별칭 검증, 금액 표시 (공용)
+bubot/schemas.py, usage.py     GPT 구조화 출력 형식, API 사용량·비용 한도
+bubot/filters/                 질문 전처리·필터 (LLM 없음)
+  keyboard.py                  한/영 자판 변환 (tjdnf → 서울)
+  expressions.py               일상 표현 → 명시 월·지역 (지난달, N년 전, 마용성 등)
+  query_parser.py              질문에서 지역·기간·의도 추출, 보유 기간 밖 시점 표시
+  price_filter.py              가격 조건 검색, 자료 밖 질문 안내 (전세·단지·실거래·오피스텔 등)
+  coverage.py                  질문 연도와 보유 월 대조
+bubot/queries/                 원본 CSV 계산 쿼리 (LLM 없음)
+  period_queries.py            기간 평균, 연간 평균 재계산
+  declines.py                  하락 지역 집계
+  retrieval.py                 가격 순위 집계 (전체 원본 비교, 벡터 검색 아님)
+  year_query.py                작년·연도별 조회, 지역 기록 나열
+bubot/indexing/                문서 생성
+  documents.py                 CSV → 가격 문서
+  knowledge.py                 검색용 지식 문서 생성
+bubot/embedding/               임베딩·검색
+  knowledge_index.py           지식 색인 임베딩·검증·검색
+  vector_store.py              SQLite 벡터 저장소
+bubot/cache/                   캐시
+  answer_cache.py              같은 질문 답변 캐시
+  data_cache.py                CSV·지식 문서 캐시 (파일 변경 시 자동 갱신)
+bubot/answers/                 답변 후처리
+  answer_check.py              답변 속 변동률(%)과 근거 대조
+  answer_format.py             금액 단위 통일·출처 한 줄 표기
+  source_display.py            출처 표시명
 bubot/web/server.py            로컬 HTTP 서버, 접속 허용 판정(--lan)
 bubot/web/service.py           RAG 연결 및 응답 변환
 bubot/web/history.py           테스트 기록 저장·열람

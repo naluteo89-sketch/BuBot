@@ -1,8 +1,8 @@
 """전체 보유 기간의 지역별 하락 여부를 원본으로 집계합니다."""
 import re
-from .regions import region_catalog, ranking_regions
-from .pricing import format_price
-from .config import CSV_PATH
+from ..regions import region_catalog, ranking_regions
+from ..pricing import format_price
+from ..config import CSV_PATH
 
 
 def declining_regions(question, corpus, unit):

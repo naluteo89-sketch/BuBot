@@ -2,7 +2,7 @@
 import re
 from datetime import datetime, timezone, timedelta
 
-from .config import CSV_PATH
+from ..config import CSV_PATH
 
 YEAR = re.compile(r"(?<![0-9])([0-9]{4}|[0-9]{2})\s*년")
 # 두 자리 숫자+년은 기간일 수 있습니다: '최근 10년', '지난 10년간', '10년 전'은 연도가 아닙니다.

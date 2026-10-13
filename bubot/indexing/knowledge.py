@@ -14,10 +14,10 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import KNOWLEDGE_DIR, KNOWLEDGE_VERSION
+from ..config import KNOWLEDGE_DIR, KNOWLEDGE_VERSION
 from .documents import Corpus, Document, read_corpus
-from .pricing import format_price
-from .regions import region_catalog
+from ..pricing import format_price
+from ..regions import region_catalog
 
 # 흐름 표현 기준 (knowledge/02_용어와_계산방법.md 와 동일하게 유지)
 TREND_3M = 1.0

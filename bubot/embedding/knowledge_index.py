@@ -7,10 +7,10 @@ import json
 from pathlib import Path
 
 import gpt_api
-from .config import (BATCH_SIZE, KNOWLEDGE_DIR, KNOWLEDGE_MANIFEST_PATH, KNOWLEDGE_MAX_DISTANCE,
+from ..config import (BATCH_SIZE, KNOWLEDGE_DIR, KNOWLEDGE_MANIFEST_PATH, KNOWLEDGE_MAX_DISTANCE,
                      KNOWLEDGE_VERSION, VECTOR_PATH, CSV_PATH)
-from .documents import read_corpus
-from .knowledge import build_knowledge
+from ..indexing.documents import read_corpus
+from ..indexing.knowledge import build_knowledge
 from .vector_store import open_client, open_collection
 
 GUIDE_KINDS = ['guide']

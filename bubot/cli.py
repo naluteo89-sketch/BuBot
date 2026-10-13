@@ -51,8 +51,8 @@ def cmd_check_api(_args) -> int:
 
 
 def cmd_prepare(_args) -> int:
-    from .documents import read_corpus, export_documents
-    from .knowledge import build_knowledge
+    from .indexing.documents import read_corpus, export_documents
+    from .indexing.knowledge import build_knowledge
     from collections import Counter
     corpus = read_corpus()
     export_documents(corpus, DOCUMENTS_PATH)
@@ -73,13 +73,13 @@ def cmd_prepare(_args) -> int:
 
 
 def cmd_embed(_args) -> int:
-    from .knowledge_index import build_knowledge_index
+    from .embedding.knowledge_index import build_knowledge_index
     print(json.dumps(build_knowledge_index(), ensure_ascii=False, indent=2))
     return 0
 
 
 def cmd_search(args) -> int:
-    from .knowledge_index import retrieve
+    from .embedding.knowledge_index import retrieve
     from .rag_service import open_index
     _, collection = open_index()
     hits, diagnostics = retrieve(collection, args.question, general_k=args.top_k,

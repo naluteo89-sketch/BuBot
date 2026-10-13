@@ -1,11 +1,11 @@
 """가격 조건 검색('5억 이하 서울 구', '10억 넘는 시도')과 자료 밖 질문 안내. 원본에서 직접 계산합니다 (LLM 없음)."""
 import re
 
-from .config import CSV_PATH
-from .pricing import format_price
+from ..config import CSV_PATH
+from ..pricing import format_price
 from .query_parser import find_level, find_threshold, parse_period
-from .regions import ranking_regions, region_catalog
-from .year_query import named_region
+from ..regions import ranking_regions, region_catalog
+from ..queries.year_query import named_region
 
 LIST_LIMIT = 30
 OP_WORDS = {'>=': '이상', '>': '초과', '<=': '이하', '<': '미만'}

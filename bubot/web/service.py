@@ -4,10 +4,10 @@ import time
 from collections import defaultdict, deque
 from threading import Lock
 
-from bubot.answer_format import source_note, unify_units
+from bubot.answers.answer_format import source_note, unify_units
 from bubot.config import DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, PROJECT_NAME
 from bubot.conversation import MEMORY, chat
-from bubot.source_display import SOURCE_LABEL
+from bubot.answers.source_display import SOURCE_LABEL
 
 _coverage_notes = {}  # 원본 해시 → 결측 안내 문구 (페이지를 열 때마다 4만여 개 문서를 다시 훑지 않도록)
 
@@ -160,7 +160,7 @@ def api_health(now=None, ping=None):
 
 def status():
     from gpt_api import check_configuration
-    from bubot.data_cache import load_corpus
+    from bubot.cache.data_cache import load_corpus
     from bubot.rag_service import open_index
     info = {"project": PROJECT_NAME, "source": SOURCE_LABEL, "memory_turns": MEMORY.turns,
             "key_ready": bool(check_configuration()["키 인식"])}

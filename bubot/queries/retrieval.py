@@ -1,6 +1,6 @@
 """가격 순위 집계: 전체 원본 문서의 유효 가격을 비교합니다. 유사도 검색으로 순위를 계산하지 않습니다."""
-from .data_cache import load_corpus
-from .regions import region_catalog, resolve_region, ranking_regions
+from ..cache.data_cache import load_corpus
+from ..regions import region_catalog, resolve_region, ranking_regions
 
 
 def _aggregate_price(filters: dict, *, mode: str) -> dict:

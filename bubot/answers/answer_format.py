@@ -6,7 +6,7 @@
 import re
 
 from bubot.pricing import format_price
-from bubot.source_display import SOURCE_LABEL
+from bubot.answers.source_display import SOURCE_LABEL
 
 # '2억 8,668만원 (286,680천원)'의 괄호 속 천원 병기
 _PAREN_THOUSAND = re.compile(r'\s*\(\s*[+-]?\d[\d,]*(?:\.\d+)?\s*천원\s*\)')

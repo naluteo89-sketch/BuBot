@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 from threading import RLock
 from html import escape
-from bubot.source_display import display_sources
+from bubot.answers.source_display import display_sources
 from .layout import render_sidebar
 
 BASE = Path(__file__).resolve().parents[2]

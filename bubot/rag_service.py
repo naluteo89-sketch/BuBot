@@ -12,23 +12,23 @@ import time
 import gpt_api
 from .config import (CONTEXT_CHAR_BUDGET, DEFAULT_TOP_N, DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, KNOWLEDGE_FALLBACK_K,
                      KNOWLEDGE_SEARCH_LIMIT, KNOWLEDGE_TOP_K, MAX_REGIONS)
-from .data_cache import documents_by_id, load_corpus, load_knowledge
-from .knowledge import _shift
-from .knowledge_index import GUIDE_KINDS, retrieve, validate_knowledge_index
+from .cache.data_cache import documents_by_id, load_corpus, load_knowledge
+from .indexing.knowledge import _shift
+from .embedding.knowledge_index import GUIDE_KINDS, retrieve, validate_knowledge_index
 from .pricing import format_price
 from .regions import ALIASES, region_catalog, resolve_region, gwangju_clarification
-from .retrieval import argmax_price, argmin_price
+from .queries.retrieval import argmax_price, argmin_price
 from .schemas import Analysis
-from .coverage import explicit_years, year_coverage
-from .year_query import last_year_answer, named_region, region_records, resolve_relative_years
-from .declines import declining_regions
-from .period_queries import aggregate_query, negative_concept, correction_query, annual_mean_concept
-from .answer_check import number_issues
-from .answer_cache import ANSWER_CACHE, cache_key
-from .keyboard import keyboard_to_hangul
-from .query_parser import find_cues, find_regions, find_top_n, parse_period, parse_question
-from .expressions import ambiguous_place, ambiguous_place_candidates, rewrite
-from .price_filter import out_of_scope, price_filter
+from .filters.coverage import explicit_years, year_coverage
+from .queries.year_query import last_year_answer, named_region, region_records, resolve_relative_years
+from .queries.declines import declining_regions
+from .queries.period_queries import aggregate_query, negative_concept, correction_query, annual_mean_concept
+from .answers.answer_check import number_issues
+from .cache.answer_cache import ANSWER_CACHE, cache_key
+from .filters.keyboard import keyboard_to_hangul
+from .filters.query_parser import find_cues, find_regions, find_top_n, parse_period, parse_question
+from .filters.expressions import ambiguous_place, ambiguous_place_candidates, rewrite
+from .filters.price_filter import out_of_scope, price_filter
 
 
 def calculate_facts(corpus, ids, intent, month, start, end, unit):
@@ -575,7 +575,7 @@ def _unresolved(result):
 
 def _region_text(region, catalog):
     """지역 label을 질문에 넣을 짧은 이름으로 ('전남광주 / 광주 / 북구' → '광주 북구'). 그 지역 하나로만 해석되는 이름을 고릅니다."""
-    from .year_query import named_region
+    from .queries.year_query import named_region
     parts = region['label'].split(' / ')
     # 권역 이름('서남권', '강남지역')은 사람이 쓰는 주소가 아니므로 뺀 이름을 먼저 시도합니다 ('서울 강서구', '광주 북구').
     named = [x for x in parts if not x.endswith(('권', '지역')) and x != '전남광주']
@@ -596,7 +596,7 @@ def _label_of(text):
 
 def _address_region(address, catalog):
     """'광주광역시 북구' 같은 주소 → 지역 목록의 지역 하나. 해석이 모호하거나 없으면 None."""
-    from .year_query import named_region
+    from .queries.year_query import named_region
     found, ambiguous = named_region(_normalized(address or ''), catalog)
     return None if ambiguous else found
 
@@ -865,7 +865,7 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     choices=[]
     if intent=='lookup' and len(ids)==1:
         # 하위 지역이 있으면 '하위 지역 값도 필요하신가요?' 선택지 버튼 (예: 광주 → 동구·서구·남구·북구·광산구)
-        from .year_query import subregion_choices
+        from .queries.year_query import subregion_choices
         choices,_=subregion_choices(catalog[ids[0]],catalog,f"{target_month[:4]}년 {int(target_month[5:])}월",'기록 전부')
     return {**result,'analysis':analysis,'contexts':contexts,'facts':facts,'sources':sources,'route':'numeric',
             'timings':timings,'choices':choices}
@@ -902,7 +902,7 @@ def ask(question, history=None, **kwargs):
 
 
 def _converse(question, history=None, **kwargs):
-    from .source_display import display_sources
+    from .answers.source_display import display_sources
     if not isinstance(question, str) or not 1 <= len(question.strip()) <= 1000:
         raise ValueError('질문은 1~1000자, 검색 개수는 1~50개여야 합니다.')
     converted = keyboard_to_hangul(question)  # 한/영 전환 없이 친 한글 (예: 'tjdnf' → '서울')
@@ -962,7 +962,7 @@ def _converse(question, history=None, **kwargs):
         standalone, followup = condensed['standalone_question'], condensed['is_followup']
         if followup:
             catalog=region_catalog(load_corpus())
-            from .year_query import named_region
+            from .queries.year_query import named_region
             scope,ambiguous=named_region(standalone,catalog)
             # '시도 중 가장 싼 곳'처럼 전국 범위 질문에는 이전 지역을 붙이지 않습니다 (붙이면 후보가 1곳으로 줄어듦).
             nationwide = re.search(r'전국|모든 지역|전체 지역|시\s*·?\s*도\s*(?:중|에서|별|들)|권역\s*(?:중|별)', question + ' ' + standalone)

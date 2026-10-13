@@ -8,8 +8,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 # 설정 상수 (프로젝트 상황에 맞게 조절)
-from .config import CSV_PATH, DOCUMENT_VERSION
-from .pricing import format_price
+from ..config import CSV_PATH, DOCUMENT_VERSION
+from ..pricing import format_price
 REGION_COL_COUNT = 4  # 지역 계층열 개수 (1: ID, 1~4: 지역명)
 DATA_START_COL = 1 + REGION_COL_COUNT  # 5번째 인덱스부터 월 데이터
 

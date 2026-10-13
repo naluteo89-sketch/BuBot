@@ -1,10 +1,10 @@
 """작년 질문은 보유한 작년 월에 한정해 조회/집계합니다."""
 import re
 from datetime import datetime, timezone, timedelta
-from .regions import ALIASES, region_catalog, ranking_regions
-from .pricing import format_price
-from .config import CSV_PATH
-from .coverage import explicit_years
+from ..regions import ALIASES, region_catalog, ranking_regions
+from ..pricing import format_price
+from ..config import CSV_PATH
+from ..filters.coverage import explicit_years
 
 # 변화·순위를 묻는 '작년' 질문은 이 규칙이 아니라 일반 경로(GPT 분석 → 수치/서술)에서 답합니다.
 CHANGE_WORDS = re.compile(r'오른|올랐|오름|내린|내렸|내림|떨어|상승|하락|변동|변화|대비|비교|추이|흐름|순위|많이|적게|보다')
@@ -31,7 +31,7 @@ def named_region(question, catalog):
     '강남'(강남구), '포항 남구'처럼 줄인 이름·상위 지역 수식도 인식하고, '중구'·'광주'처럼 여러 곳에 있는
     이름은 임의로 고르지 않고 모호(True)로 돌려줍니다. (2026-10-12: query_parser.find_regions 사용)
     """
-    from .query_parser import find_regions
+    from ..filters.query_parser import find_regions
     if not catalog:
         return None, False
     mentions = [m for m in find_regions(question, catalog) if not m.qualifier]
@@ -151,7 +151,7 @@ def child_regions(scope, catalog):
 
 def subregion_choices(scope, catalog, period_text, request_text):
     """하위 지역이 있으면 '함께 볼까요?' 선택지 버튼. 누르면 보낼 질문을 함께 만듭니다."""
-    from .rag_service import _region_text  # 질문에 넣어도 그 지역 하나로만 해석되는 이름 ('광주 북구')
+    from ..rag_service import _region_text  # 질문에 넣어도 그 지역 하나로만 해석되는 이름 ('광주 북구')
     children = child_regions(scope, catalog)
     if not children:
         return [], ''
@@ -205,7 +205,7 @@ def region_records(question, corpus, unit):
                 used.append(doc)
     span = _month_span(months, corpus.months) if len(months) > 1 else months[0]
     names = '·'.join(_short_name(r['label'], scope) for r in regions[1:])
-    from .rag_service import _region_text
+    from ..rag_service import _region_text
     headline = (f"{_region_text(scope, catalog) or _short_name(scope['label'], None)}의 {span} 아파트 월평균 매매가격"
                 + (f"을 하위 지역({names})까지 모두 보여드립니다." if names else "을 모두 보여드립니다."))
     notes = []

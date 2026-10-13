@@ -8,7 +8,7 @@ import copy
 from collections import OrderedDict
 from threading import Lock
 
-from .config import ANSWER_CACHE_SIZE, KNOWLEDGE_MANIFEST_PATH
+from ..config import ANSWER_CACHE_SIZE, KNOWLEDGE_MANIFEST_PATH
 
 CACHEABLE_ROUTES = {'numeric', 'explain'}
 CACHEABLE_CHECKS = {'ok', 'corrected'}

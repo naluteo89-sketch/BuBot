@@ -2,9 +2,9 @@
 from pathlib import Path
 from threading import Lock
 
-from .config import CSV_PATH, KNOWLEDGE_DIR
-from .documents import read_corpus
-from .knowledge import build_knowledge
+from ..config import CSV_PATH, KNOWLEDGE_DIR
+from ..indexing.documents import read_corpus
+from ..indexing.knowledge import build_knowledge
 
 _lock = Lock()
 _cache = {}
