@@ -7,10 +7,11 @@
 """
 import json
 import os
-from datetime import datetime, timedelta, timezone
+import time
 from threading import Lock
 
-from .config import OUTPUT_DIR
+from ..config import OUTPUT_DIR
+from ..dates import today_text
 
 USAGE_PATH = OUTPUT_DIR / 'api_usage.json'
 DAILY_BUDGET_USD = float(os.getenv('BUBOT_DAILY_BUDGET_USD', '2'))     # 0이면 한도 없음
@@ -23,10 +24,6 @@ _lock = Lock()
 
 class BudgetExceeded(ValueError):
     """API 비용 한도 도달. ValueError라 웹에서는 오류 화면이 아니라 안내 답변으로 보입니다."""
-
-
-def _today():
-    return datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')
 
 
 def _load(path):
@@ -63,7 +60,7 @@ def record(model, response, *, path=None, day=None):
         return 0.0
     cost = cost_usd(model, prompt, cached, output)
     path = path or USAGE_PATH
-    day = day or _today()
+    day = day or today_text()
     with _lock:
         data = _load(path)
         entry = data['days'].setdefault(day, {'usd': 0.0, 'calls': 0, 'models': {}})
@@ -80,7 +77,7 @@ def record(model, response, *, path=None, day=None):
 
 
 def totals(*, path=None, day=None):
-    day = day or _today()
+    day = day or today_text()
     days = _load(path or USAGE_PATH)['days']
     month = sum(v['usd'] for d, v in days.items() if d[:7] == day[:7])
     today = days.get(day, {})
@@ -97,3 +94,12 @@ def check(*, path=None, day=None):
     if MONTHLY_BUDGET_USD and now['month_usd'] >= MONTHLY_BUDGET_USD:
         raise BudgetExceeded(f"이번 달 API 사용 한도(약 ${MONTHLY_BUDGET_USD:g})에 도달해 AI 분석·문장 생성을 멈췄습니다. "
                              "원본 계산이 가능한 질문은 계속 답합니다. 관리자에게 한도 조정을 요청하세요.")
+
+
+def timed(timings, stage, fn, *args, **kwargs):
+    """API 호출 단계별 소요 시간(초)을 기록합니다. 테스트 기록에서 느린 단계를 찾는 용도입니다."""
+    start = time.perf_counter()
+    try:
+        return fn(*args, **kwargs)
+    finally:
+        timings[stage] = round(time.perf_counter() - start, 3)

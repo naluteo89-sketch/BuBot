@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
-import gpt_api
+from ..llm import gpt_api
 from ..config import (BATCH_SIZE, KNOWLEDGE_DIR, KNOWLEDGE_MANIFEST_PATH, KNOWLEDGE_MAX_DISTANCE,
                      KNOWLEDGE_VERSION, VECTOR_PATH, CSV_PATH)
 from ..indexing.documents import read_corpus

@@ -23,7 +23,7 @@ def _manifest_stamp():
 
 def cache_key(question, options, source_hash):
     """질문은 공백만 정규화합니다. 답변을 만드는 함수·모델이 바뀌면(설정 변경, 테스트 모의 객체) 다른 키가 됩니다."""
-    import gpt_api
+    from ..llm import gpt_api
     return (' '.join(question.split()), tuple(sorted(options.items())), source_hash, _manifest_stamp(),
             gpt_api.CHAT_MODEL, gpt_api.analyze_query, gpt_api.generate_answer, gpt_api.embed_texts)
 

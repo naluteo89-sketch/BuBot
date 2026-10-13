@@ -2,13 +2,13 @@
 import base64
 import hashlib
 import json
-from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from uuid import uuid4
 from threading import RLock
 from html import escape
-from bubot.answers.source_display import display_sources
+from bubot.answers.answer_format import display_sources
 from .layout import render_sidebar
+from ..dates import now_kst
 
 BASE = Path(__file__).resolve().parents[2]
 DIRECTORY = BASE / "testlog"
@@ -97,7 +97,7 @@ def refresh_view():
 def save(payload, result, status, elapsed):
     result = display_sources(result)
     record = {"id": uuid4().hex,
-              "created_at": datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="microseconds"),
+              "created_at": now_kst().isoformat(timespec="microseconds"),
               "question": payload.get("question", "") if isinstance(payload, dict) else "",
               "unit": payload.get("unit") if isinstance(payload, dict) else None,
               "status": "success" if status == 200 else "error",

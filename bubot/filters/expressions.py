@@ -9,18 +9,8 @@
 바꾼 내용은 notes로 돌려주어 답변 끝에 밝힙니다.
 """
 import re
-from datetime import datetime, timedelta, timezone
 
-KST = timezone(timedelta(hours=9))
-
-
-def _today():
-    return datetime.now(KST)
-
-
-def _shift(month, delta):
-    total = int(month[:4]) * 12 + int(month[5:7]) - 1 + delta
-    return f"{total // 12}-{total % 12 + 1:02d}"
+from ..dates import now_kst, shift
 
 
 def _label(month):
@@ -55,23 +45,6 @@ AMBIGUOUS_PLACES = {'광교': '수원시 영통구, 용인시 수지구', '위�
 EVENTS = [(r'코로나\s*(?:전|이전|직전)', '2019-12', '코로나19 이전을 2019년 12월로 보았습니다.')]
 
 
-def ambiguous_place_candidates(question):
-    """'광교' → ('광교', ['수원시 영통구', '용인시 수지구']). 선택지 버튼용."""
-    for place, candidates in AMBIGUOUS_PLACES.items():
-        if place in question and ',' in candidates:
-            return place, [c.strip() for c in candidates.split(',')]
-    return None
-
-
-def ambiguous_place(question):
-    """'광교 집값'처럼 여러 시군구에 걸친 생활권이면 확인 안내문. 아니면 None."""
-    for place, candidates in AMBIGUOUS_PLACES.items():
-        if place in question and ',' in candidates:
-            return (f"'{place}'은(는) 여러 시군구에 걸친 생활권이고 동 단위 자료가 없습니다. "
-                    f"다음 중 하나를 골라 다시 물어보세요: {candidates}.")
-    return None
-
-
 def _han_river(text, notes):
     """'강남이랑 강북'처럼 둘 다 구 없이 쓰면 한강 남북 권역(강남지역·강북지역)으로 봅니다."""
     south, north = r'강남(?![구지\d]|\s*[34]\s*구)', r'강북(?![구지])'
@@ -104,7 +77,7 @@ def _numbers(text):
 
 def rewrite(question, months, today=None):
     """(바꾼 질문, 안내 목록). months: 보유 월 목록(정렬)."""
-    today = today or _today()
+    today = today or now_kst()
     first, latest = months[0], months[-1]
     this_month = f"{today.year}-{today.month:02d}"
     year = today.year
@@ -154,9 +127,9 @@ def rewrite(question, months, today=None):
 
     # 기준 시점 표현 → (정규식, 월 계산). 비교형('…보다', '…대비', '…부터')은 그 시점 ~ 최신 월 범위입니다.
     anchors = [
-        (r'(?<![\d.])(\d+)\s*(년|개월)\s*(?:전|이전)', lambda m: counted(m[0], _shift(latest, -int(m[1]) * (12 if m[2] == '년' else 1)))),
+        (r'(?<![\d.])(\d+)\s*(년|개월)\s*(?:전|이전)', lambda m: counted(m[0], shift(latest, -int(m[1]) * (12 if m[2] == '년' else 1)))),
         (r'(?:작년|지난\s*해|전년)\s*(?:이맘\s*때|이맘|이\s*맘때|같은\s*달|같은\s*때|동월|동기|이\s*시기)',
-         lambda m: counted(m[0], _shift(latest, -12))),
+         lambda m: counted(m[0], shift(latest, -12))),
         (r'(?:재작년)\s*(?:말|연말|12월)', lambda m: clamp(f"{year - 2}-12", m[0])),
         (r'(?:작년|지난\s*해|전년)\s*(?:말|연말|년말)', lambda m: clamp(f"{year - 1}-12", m[0])),
         (r'(?:작년|지난\s*해|전년)\s*(?:초|연초)', lambda m: clamp(f"{year - 1}-01", m[0])),
@@ -165,7 +138,7 @@ def rewrite(question, months, today=None):
         (r'(?:올해|올\s*해|금년|이번\s*해|올)\s*(?:초|연초)|(?<![가-힣])(?<!년 )연초', lambda m: clamp(f"{year}-01", m[0])),
         (r'(?<![가-힣])(?<!년 )연말', lambda m: clamp(f"{year - 1}-12", m[0])),
         # '지난달보다'는 최신 월과 그 전 달 비교, '지난달 가격'은 오늘 기준 지난달(없으면 최신 월)
-        (r'지난\s*달|저번\s*달|지난번\s*달|전월|전달', lambda m, cmp: _shift(latest, -1) if cmp else clamp(_shift(this_month, -1), m[0])),
+        (r'지난\s*달|저번\s*달|지난번\s*달|전월|전달', lambda m, cmp: shift(latest, -1) if cmp else clamp(shift(this_month, -1), m[0])),
         (r'이번\s*달|이달|당월|금월', lambda m: clamp(this_month, m[0])),
         # 월별 자료라 주·일 단위는 없습니다: 오늘이 속한 달(없으면 최신 월)
         (r'지난\s*주|저번\s*주|이번\s*주|금주|어제|오늘|그저께|그제|엊그제|며칠\s*전|요\s*며칠',

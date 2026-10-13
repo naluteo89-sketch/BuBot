@@ -42,9 +42,9 @@ cd C:\BuBot
 
 3) API 키 (프로젝트 폴더 밖 외부 파일 방식)
    기본: C:\keydata\gpt_key.py 안의 open_Aikey 값을 읽습니다.
-   폴더를 공유·백업해도 키가 포함되지 않도록 한 의도된 구성입니다. gpt_api.py의 API_KEY는 비워 두세요.
+   폴더를 공유·백업해도 키가 포함되지 않도록 한 의도된 구성입니다. bubot/llm/gpt_api.py의 API_KEY는 비워 두세요.
    다른 경로는 환경변수 BUBOT_KEY_FILE, 또는 환경변수 OPENAI_API_KEY / BUBOT_API_KEY 사용 가능.
-   우선순위: gpt_api.py API_KEY → OPENAI_API_KEY → BUBOT_API_KEY → 외부 키 파일
+   우선순위: bubot/llm/gpt_api.py API_KEY → OPENAI_API_KEY → BUBOT_API_KEY → 외부 키 파일
    확인: .\.venv\Scripts\python.exe main.py check-api  (키 인식 여부만 표시, 키 값은 출력하지 않음)
 
 4) 지식 색인 만들기 (필수, 유료 API 호출)
@@ -199,24 +199,26 @@ knowledge/*.md          데이터 안내, 용어·계산 방법, 이용 안내 (
 
 10. 폴더·파일 구성 (참고)
 main.py / web_main.py          CLI / 웹 실행 진입점
-gpt_api.py                     API 키·연결, 임베딩, GPT 질문 분석·답변
 bubot/cli.py                   CLI 명령
+bubot/conversation.py          대화: 이전 질문 반영(후속 질문 재구성·정정), 대화 메모리
+bubot/rag_service.py           라우터: 질문 하나 처리 (규칙 → GPT 분석 → 수치/서술 경로)
 bubot/config.py                설정 기본값
-bubot/rag_service.py           라우터 (수치/서술 경로)
-bubot/conversation.py          대화 메모리
-bubot/regions.py, pricing.py   지역 계층·별칭 검증, 금액 표시 (공용)
-bubot/schemas.py, usage.py     GPT 구조화 출력 형식, API 사용량·비용 한도
-bubot/filters/                 질문 전처리·필터 (LLM 없음)
+bubot/dates.py                 날짜·월 계산 (한국 시간, 월 이동·개월 수)
+bubot/regions.py               지역 목록·별칭 검증, 질문 속 지역 언급 찾기
+bubot/pricing.py               금액 표시
+bubot/filters/                 질문 전처리·필터
   keyboard.py                  한/영 자판 변환 (tjdnf → 서울)
   expressions.py               일상 표현 → 명시 월·지역 (지난달, N년 전, 마용성 등)
-  query_parser.py              질문에서 지역·기간·의도 추출, 보유 기간 밖 시점 표시
-  price_filter.py              가격 조건 검색, 자료 밖 질문 안내 (전세·단지·실거래·오피스텔 등)
-  coverage.py                  질문 연도와 보유 월 대조
+  period_parser.py             질문 속 기간·연도 해석, 보유 기간 밖 시점 표시
+  query_parser.py              의도 단서·가격 조건·순위 개수, 질문 프레임
+  places.py                    생활권·랜드마크 등 장소 이름 → 지역 (소재지 확인만 LLM)
+  guards.py                    답하기 전 안내 (전세·단지·실거래·오피스텔·보유 기간 밖 시점·광주 확인·연도 보유 범위)
+  analysis_correction.py       GPT 질문 분석 보정 (지역 ID·상대 기간 확정, 분석 실패 시 코드 해석)
 bubot/queries/                 원본 CSV 계산 쿼리 (LLM 없음)
-  period_queries.py            기간 평균, 연간 평균 재계산
-  declines.py                  하락 지역 집계
-  retrieval.py                 가격 순위 집계 (전체 원본 비교, 벡터 검색 아님)
+  period_queries.py            기간 평균, 기간·전체 기간 하락 지역, 연간 평균 재계산
+  price_ranking.py             가격 조건 검색, 최고·최저 가격 순위 (전체 원본 비교, 벡터 검색 아님)
   year_query.py                작년·연도별 조회, 지역 기록 나열
+  facts.py                     조회·추이·비교 계산값
 bubot/indexing/                문서 생성
   documents.py                 CSV → 가격 문서
   knowledge.py                 검색용 지식 문서 생성
@@ -226,10 +228,15 @@ bubot/embedding/               임베딩·검색
 bubot/cache/                   캐시
   answer_cache.py              같은 질문 답변 캐시
   data_cache.py                CSV·지식 문서 캐시 (파일 변경 시 자동 갱신)
-bubot/answers/                 답변 후처리
+bubot/answers/                 답변 만들기
+  answer_format.py             규칙 답변·확인 답변 형식, 출처 표시명·한 줄 출처, 금액 단위 통일
+  choices.py                   선택지 버튼 (같은 이름 지역 후보, 하위 지역)
+  generation.py                GPT 답변 작성, 수치 검증 후 1회 재작성, 실패 시 계산값으로 답변
   answer_check.py              답변 속 변동률(%)과 근거 대조
-  answer_format.py             금액 단위 통일·출처 한 줄 표기
-  source_display.py            출처 표시명
+bubot/llm/                     OpenAI 연결
+  gpt_api.py                   API 키·연결, 임베딩, GPT 질문 분석·재구성·위치 확인·답변
+  schemas.py                   GPT 구조화 출력 형식
+  usage.py                     API 사용량·비용 한도, 단계별 소요 시간
 bubot/web/server.py            로컬 HTTP 서버, 접속 허용 판정(--lan)
 bubot/web/service.py           RAG 연결 및 응답 변환
 bubot/web/history.py           테스트 기록 저장·열람

@@ -7,7 +7,7 @@ from threading import Lock
 from bubot.answers.answer_format import source_note, unify_units
 from bubot.config import DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, PROJECT_NAME
 from bubot.conversation import MEMORY, chat
-from bubot.answers.source_display import SOURCE_LABEL
+from bubot.answers.answer_format import SOURCE_LABEL
 
 _coverage_notes = {}  # 원본 해시 → 결측 안내 문구 (페이지를 열 때마다 4만여 개 문서를 다시 훑지 않도록)
 
@@ -151,7 +151,7 @@ def api_health(now=None, ping=None):
         if _health["at"] is not None and now - _health["at"] < HEALTH_CACHE_SECONDS:
             return _health["result"]
         if ping is None:
-            from gpt_api import ping_api as ping
+            from bubot.llm.gpt_api import ping_api as ping
         result = ping()
         level, message = classify_health(result)
         _health.update(at=now, result={"level": level, "message": message, "latency": result.get("latency")})
@@ -159,13 +159,13 @@ def api_health(now=None, ping=None):
 
 
 def status():
-    from gpt_api import check_configuration
+    from bubot.llm.gpt_api import check_configuration
     from bubot.cache.data_cache import load_corpus
     from bubot.rag_service import open_index
     info = {"project": PROJECT_NAME, "source": SOURCE_LABEL, "memory_turns": MEMORY.turns,
             "key_ready": bool(check_configuration()["키 인식"])}
     try:
-        from bubot.usage import totals
+        from bubot.llm.usage import totals
         info["usage"] = totals()  # 오늘·이번 달 추정 API 비용과 한도 (USD)
     except Exception:
         pass

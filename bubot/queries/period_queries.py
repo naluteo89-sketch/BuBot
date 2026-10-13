@@ -1,11 +1,13 @@
-"""원본 기반 기간 평균·하락 지역 계산. 데이터 존재 여부는 원본에서 확인합니다."""
+"""원본 기반 기간 평균·하락 지역 계산 (N년·지정 기간·전체 보유 기간). 데이터 존재 여부는 원본에서 확인합니다."""
 import re
 from decimal import Decimal, ROUND_HALF_UP
-from ..filters.coverage import explicit_years
-from ..regions import region_catalog, ranking_regions
-from .year_query import named_region, resolve_relative_years
+from ..filters.period_parser import explicit_years
+from ..regions import named_region, region_catalog, ranking_regions
+from .year_query import resolve_relative_years
 from ..pricing import format_price
+from ..answers.answer_format import rule_answer
 from ..config import CSV_PATH
+from ..dates import months_between, months_in_year, shift
 
 
 def negative_concept(question):
@@ -45,17 +47,10 @@ def period(question, months, inclusive=False):
         n=int(duration[1]);end=months[-1]
         if n<1:return None
         span=(n*12-1 if inclusive else n*12) if duration[2]=='년' else n-1
-        total=int(end[:4])*12+int(end[5:])-1-span
-        return f'{total//12:04}-{total%12+1:02}',end
+        return shift(end,-span),end
     if re.search('전체|모든',question) and '기간' in question:return months[0],months[-1]
     if not years and WHOLE_PERIOD.search(question):return months[0],months[-1]
     return None
-
-
-def response(answer, facts=(), docs=(), **analysis):
-    return {'answer':answer,'facts':list(facts),'contexts':[{'id':d.id,'text':d.text,'metadata':d.metadata} for d in docs],
-            'sources':list(dict.fromkeys(f"[{d.id}] {CSV_PATH.name} · {d.metadata['region_path']} · {d.metadata['month']} · 원본 {d.metadata['source_row']}행 · SHA-256 {d.metadata['source_sha256']}" for d in docs)),
-            'analysis':analysis,'route':'rule'}
 
 
 def aggregate_query(question, corpus, unit):
@@ -68,14 +63,14 @@ def aggregate_query(question, corpus, unit):
     # 단일 월 가격은 기존 정확 조회 경로로 보냅니다.
     if start==end:return None
     catalog=region_catalog(corpus);scope,ambiguous=named_region(question,catalog)
-    if ambiguous:return response('같은 이름의 지역이 있습니다. 시도와 시군구를 함께 지정해주세요.',intent='clarify')
+    if ambiguous:return rule_answer('같은 이름의 지역이 있습니다. 시도와 시군구를 함께 지정해주세요.',intent='clarify')
     if re.search('전세|월세|거래량|거래 건수|개별|실거래 기록',question):return None
     if negative:
         level='시도' if '시도' in question else '시군구'
         allowed=ranking_regions(catalog,scope['id'] if scope else None,level)
         if scope and scope['level']=='시군구':allowed={scope['id']}
         if start not in corpus.months or end not in corpus.months:
-            return response(f'요청 비교 기간은 {start} ~ {end}입니다. 보유 기간 {corpus.months[0]} ~ {corpus.months[-1]} 밖의 시작·종료값이 있어 변동률을 계산할 수 없습니다.',intent='clarify')
+            return rule_answer(f'요청 비교 기간은 {start} ~ {end}입니다. 보유 기간 {corpus.months[0]} ~ {corpus.months[-1]} 밖의 시작·종료값이 있어 변동률을 계산할 수 없습니다.',intent='clarify')
         docs={(d.metadata['region_id'],d.metadata['month']):d for d in corpus.documents if d.metadata['kind']=='monthly' and d.metadata['region_id'] in allowed and d.metadata['month'] in (start,end)}
         rows=[];missing=0
         for rid in allowed:
@@ -87,9 +82,9 @@ def aggregate_query(question, corpus, unit):
         rows.sort(key=lambda x:(x[0],x[1]))
         facts=[f"{catalog[rid]['label']}: {format_price(a.metadata['price_thousand_krw'],unit)} → {format_price(b.metadata['price_thousand_krw'],unit)}, {rate:+.2f}%" for rate,rid,a,b in rows]
         title=f'데이터 최신 월을 기준으로 {start} ~ {end}의 시작·종료 월평균 가격을 비교했습니다. 비교 가능한 {len(allowed)-missing}개 중 {len(rows)}개가 하락했고, 결측·시작값 0인 {missing}개는 제외했습니다. 비교 범위: {scope["label"] if scope else "전국"} {level}. 매월 계속 하락했다는 뜻은 아닙니다.'
-        return response(title+'\n\n'+('\n'.join(facts) or '비교 가능한 지역 중 하락한 지역은 없습니다.'),facts,[d for _,_,a,b in rows for d in (a,b)],intent='period_decline',resolved_start=start,resolved_end=end,count=len(rows),excluded=missing,candidates=len(allowed)-missing)
+        return rule_answer(title+'\n\n'+('\n'.join(facts) or '비교 가능한 지역 중 하락한 지역은 없습니다.'),facts,[d for _,_,a,b in rows for d in (a,b)],intent='period_decline',resolved_start=start,resolved_end=end,count=len(rows),excluded=missing,candidates=len(allowed)-missing)
     present=[m for m in corpus.months if start<=m<=end]
-    if not present:return response(f'{start[:4]}년에 해당하는 데이터는 현재 원본 CSV에 없습니다. 요청 기간: {start} ~ {end}. 보유 기간: {corpus.months[0]} ~ {corpus.months[-1]}.',intent='clarify')
+    if not present:return rule_answer(f'{start[:4]}년에 해당하는 데이터는 현재 원본 CSV에 없습니다. 요청 기간: {start} ~ {end}. 보유 기간: {corpus.months[0]} ~ {corpus.months[-1]}.',intent='clarify')
     # 2026년처럼 진행 중인 연도는 12개월을 채우지 않고 보유한 월(1월 ~ 최신 월)까지의 평균으로 계산합니다.
     requested_end=end
     start,end=max(start,present[0]),min(end,present[-1])
@@ -97,13 +92,13 @@ def aggregate_query(question, corpus, unit):
     one_year=start[:4]==end[:4]==requested_end[:4]
     if not scope:
         basis=f'{start[:4]}년 평균은 {int(end[5:])}월까지 보유한 {len(present)}개월 값의 합 ÷ {len(present)}로 계산합니다. ' if one_year and clipped else ''
-        return response(f'{start} ~ {end} 중 {len(present)}개월 자료가 있습니다. 보유 월: '+ '·'.join(str(int(m[5:]))+'월' for m in present) + ('만 있습니다. ' if len(present)<12 else '입니다. ') + basis + '어느 지역의 평균매매가격을 조회할까요? 개별 거래 기록이 아닌 월평균 가격 자료입니다.',intent='clarify')
+        return rule_answer(f'{start} ~ {end} 중 {len(present)}개월 자료가 있습니다. 보유 월: '+ '·'.join(str(int(m[5:]))+'월' for m in present) + ('만 있습니다. ' if len(present)<12 else '입니다. ') + basis + '어느 지역의 평균매매가격을 조회할까요? 개별 거래 기록이 아닌 월평균 가격 자료입니다.',intent='clarify')
     selected=sorted([d for d in corpus.documents if d.metadata['kind']=='monthly' and d.metadata['region_id']==scope['id'] and d.metadata['month'] in present],key=lambda d:d.metadata['month'])
     valid=[d for d in selected if d.metadata.get('price_thousand_krw') is not None]
-    if not valid:return response(f'{scope["label"]}의 요청 기간 값은 모두 결측입니다.',docs=selected,intent='clarify')
+    if not valid:return rule_answer(f'{scope["label"]}의 요청 기간 값은 모두 결측입니다.',docs=selected,intent='clarify')
     total=sum((Decimal(str(d.metadata['price_thousand_krw'])) for d in valid),Decimal(0));average=total/len(valid)
     rounded=average.quantize(Decimal('0.001'),rounding=ROUND_HALF_UP)
-    expected=(int(end[:4])-int(start[:4]))*12+int(end[5:])-int(start[5:])+1
+    expected=months_between(start,end)+1
     facts=[f"{d.metadata['month']}: {format_price(d.metadata['price_thousand_krw'],unit)}" for d in valid]
     facts.append(f'월평균 가격 합계 {format_price(total,unit)} ÷ {len(valid)}개월 = {format_price(rounded,unit)} (원 단위 반올림)')
     if clipped and one_year:
@@ -114,7 +109,42 @@ def aggregate_query(question, corpus, unit):
         answer=f'{scope["label"]} {start} ~ {end}{until}의 월평균 매매가격을 단순 평균하면 {format_price(rounded,unit)}입니다. {expected}개월 중 유효값 {len(valid)}개월을 사용했습니다. '
     if len(valid)<expected:answer+='일부 월 값이 비어 있어 유효한 월만으로 나눈 평균입니다. '
     answer+='12월 한 달의 값이 아니며, 거래 건수로 가중한 실거래 평균도 아닙니다.'
-    return response(answer,facts,valid,intent='period_mean',resolved_region_ids=[scope['id']],resolved_start=start,resolved_end=end,mean_thousand=str(average),valid_months=len(valid))
+    return rule_answer(answer,facts,valid,intent='period_mean',resolved_region_ids=[scope['id']],resolved_start=start,resolved_end=end,mean_thousand=str(average),valid_months=len(valid))
+
+
+def declining_regions(question, corpus, unit):
+    """'전체 기간 하락 지역' 질문: 보유 첫 월 대비 최신 월에 하락한 지역 목록 (하락률 큰 순). 해당 없으면 None."""
+    if not (re.search(r'전체|모든|전 기간',question) and '기간' in question and
+            re.search(r'하락|떨어|내린',question) and re.search(r'지역|곳',question)):
+        return None
+    catalog=region_catalog(corpus)
+    level='시도' if '시도' in question else '시군구'
+    named=[r for r in catalog.values() if r['name']!='전국' and r['name'] in question]
+    if named:
+        return {'answer':'전국 시군구 전체 비교인지, 특정 지역 내 비교인지 확인해주세요. 전국 비교는 “모든 기간 데이터 중 하락한 지역들”로 질문해주세요.',
+                'analysis':{'intent':'clarify'},'contexts':[],'facts':[],'sources':[]}
+    ids=ranking_regions(catalog,level=level)
+    start,end=corpus.months[0],corpus.months[-1]
+    monthly={(d.metadata['region_id'],d.metadata['month']):d for d in corpus.documents if d.metadata['kind']=='monthly'}
+    results=[];missing=0
+    for rid in ids:
+        first,last=monthly.get((rid,start)),monthly.get((rid,end))
+        a=first.metadata.get('price_thousand_krw') if first else None
+        b=last.metadata.get('price_thousand_krw') if last else None
+        if a is None or b is None or a<=0:
+            missing+=1;continue
+        if b<a:results.append(((b/a-1)*100,rid,a,b,first,last))
+    results.sort(key=lambda row:(row[0],row[1]))
+    facts=[f"{catalog[rid]['label']}: {format_price(a,unit)} → {format_price(b,unit)}, {rate:+.2f}%" for rate,rid,a,b,_,_ in results]
+    sources=[f"{CSV_PATH.name} · {catalog[rid]['label']} · {start} ~ {end} · 원본 {first.metadata['source_row']}행 · SHA-256 {first.metadata['source_sha256']}" for _,rid,_,_,first,_ in results]
+    intro=(f'전체 보유 기간 {start} ~ {end}의 시작·종료 월평균 매매가격을 비교했습니다. '
+           f'전국 {level} 중 비교 가능한 {len(ids)-missing}개에서 {len(results)}개 지역이 하락했습니다. '
+           f'시작·종료값 결측 또는 시작값 0인 {missing}개 지역은 제외했습니다.\n'
+           '변동률=(종료 가격/시작 가격-1)×100. 하락률이 큰 순서입니다. '
+           '매월 계속 하락했다는 뜻이 아니며, 개별 실거래 가격이 아닙니다.')
+    return {'answer':intro+'\n\n'+('\n'.join(facts) or '하락한 지역이 없습니다.'),
+            'analysis':{'intent':'declining_regions','start_month':start,'end_month':end,'level':level,'count':len(results)},
+            'contexts':[],'facts':facts,'sources':sources}
 
 
 def correction_query(question, history, corpus, unit):
@@ -137,14 +167,14 @@ def correction_query(question, history, corpus, unit):
         if scope is None and not ambiguous:scope,ambiguous=named_region(previous,catalog)
         if years and scope:break
     if len(years)!=1:return None
-    year=next(iter(years));months=[m for m in corpus.months if m.startswith(f'{year}-')]
+    year=next(iter(years));months=months_in_year(corpus.months,year)
     if availability:
-        if not months:return response(f'{year}년 자료는 원본에 없습니다. 현재 보유 범위는 {corpus.months[0]} ~ {corpus.months[-1]}입니다.',intent='coverage_check')
+        if not months:return rule_answer(f'{year}년 자료는 원본에 없습니다. 현재 보유 범위는 {corpus.months[0]} ~ {corpus.months[-1]}입니다.',intent='coverage_check')
         text=f'원본을 확인하면 {year}년은 {", ".join(months)} 자료가 있습니다. 해당 연도 자료가 없다는 이전 안내는 잘못된 설명입니다. 제공 체계나 수집 지연을 원인으로 추측해서는 안 됩니다. 개별 실거래 기록과 월평균 매매가격은 별도입니다.'
         if scope:
             r=aggregate_query(f"{scope['label']} {year}년 평균 매매가격",corpus,unit)
             if r:r['answer']=text+'\n\n'+r['answer'];return r
-        return response(text,intent='coverage_check')
+        return rule_answer(text,intent='coverage_check')
     if scope:
         r=aggregate_query(f"{scope['label']} {year}년 평균 매매가격",corpus,unit)
         if r:

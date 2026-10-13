@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def cmd_check_api(_args) -> int:
-    from gpt_api import check_configuration
+    from .llm.gpt_api import check_configuration
     print(json.dumps(check_configuration(), ensure_ascii=False, indent=2))
     return 0
 
@@ -91,7 +91,7 @@ def cmd_search(args) -> int:
 
 
 def cmd_ask(args) -> int:
-    from .rag_service import ask
+    from .conversation import ask
     result = ask(args.question, top_k=args.top_k, region_id=args.region_id,
                  month=args.month, kind=args.kind, unit=args.unit)
     if args.show_analysis:
@@ -174,4 +174,4 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main())

@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..config import KNOWLEDGE_DIR, KNOWLEDGE_VERSION
+from ..dates import shift
 from .documents import Corpus, Document, read_corpus
 from ..pricing import format_price
 from ..regions import region_catalog
@@ -32,12 +33,6 @@ class KnowledgeCorpus:
     source_hash: str        # 원본 CSV + 안내 문서 전체 해시
     csv_hash: str
     latest_month: str
-
-
-def _shift(month: str, delta: int) -> str:
-    y, m = int(month[:4]), int(month[5:7])
-    total = y * 12 + (m - 1) + delta
-    return f"{total // 12}-{total % 12 + 1:02d}"
 
 
 def _rate(a, b):
@@ -123,12 +118,12 @@ def region_profiles(corpus: Corpus, catalog=None):
             changes = {}
             parts = []
             for months, label in PROFILE_SPANS:
-                rate = _rate(series.get(_shift(last, -months)), price)
+                rate = _rate(series.get(shift(last, -months)), price)
                 changes[months] = rate
                 parts.append(f"{label} 전 대비 {_pct(rate)}")
             lines.append("기간별 변화(최신 월과 N개월·N년 전 같은 달 비교): " + ', '.join(parts))
             # '최근 N개월'은 최신 월 포함 N개월입니다 (수치 경로·안내 문서 02와 같은 정의). 3개월 전 대비와 다릅니다.
-            recent_start = _shift(last, -2)
+            recent_start = shift(last, -2)
             recent = _rate(series.get(recent_start), price)
             lines.append(f"최근 3개월({recent_start}~{last}, 최신 월 포함 3개월) 변화: {_pct(recent)}")
             lines.append(f"흐름 요약(규칙 기반): 최근 3개월 {_label_3m(recent)}, 최근 1년 {_label_12m(changes[12])}")
@@ -142,7 +137,7 @@ def region_profiles(corpus: Corpus, catalog=None):
                 rank, size = _rank_of(rid, pool, lambda i: table.get(i, {}).get(latest))
                 if rank:
                     lines.append(f"{pool_name} {size}곳 중 {latest} 가격 {rank}위")
-                rank, size = _rank_of(rid, pool, lambda i: _rate(table.get(i, {}).get(_shift(latest, -12)), table.get(i, {}).get(latest)))
+                rank, size = _rank_of(rid, pool, lambda i: _rate(table.get(i, {}).get(shift(latest, -12)), table.get(i, {}).get(latest)))
                 if rank:
                     lines.append(f"{pool_name} {size}곳 중 최근 1년 상승률 {rank}위")
             year_end = [f"{y}년 {format_price(series[f'{y}-12'])}" for y in range(int(valid[0][:4]), int(last[:4]) + 1)
@@ -188,7 +183,7 @@ def market_summaries(corpus: Corpus, catalog=None):
     nation = next(r['id'] for r in catalog.values() if r['level'] == '전국')
     docs = []
     for month in corpus.months:
-        prev, year_ago = _shift(month, -1), _shift(month, -12)
+        prev, year_ago = shift(month, -1), shift(month, -12)
         meta = {'kind': 'market_monthly', 'month': month, 'year': month[:4], 'source': source,
                 'source_sha256': corpus.source_hash, 'knowledge_version': KNOWLEDGE_VERSION}
         lines = [f"전국 아파트 시장 월간 요약: {month}", f"기준 월: {month} (전월 {prev}, 전년 동월 {year_ago} 대비)"]
