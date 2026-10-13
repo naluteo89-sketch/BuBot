@@ -1,6 +1,10 @@
 프로젝트: 부동산 평균 매매가 조회 AI 개발
 BuBot - 아파트 평균매매가격 하이브리드 RAG 챗봇 실행 방법
 최종 갱신: 2026-10-12 (웹실행방법.txt 내용을 이 파일로 통합)
+https://www.reb.or.kr/r-one/portal/stat/easyStatPage/A_2024_00060.do
+https://www.data.go.kr/data/15069826/fileData.do
+
+데이터 준비
 
 목차
   0. 빠른 시작
@@ -111,9 +115,9 @@ data/new_prices.csv가 있어야 하며, 일부 시험(test_period_queries, test
 
 
 6. 테스트 기록
-웹에서 보낸 질문마다 테스트기록/ 폴더에 TXT가 저장되고 전체기록.html이 갱신됩니다.
-  (테스트기록/원본 의 JSON은 웹 뷰어용, Git에 올리지 않음)
-보기: 웹 '지난 질문'(/history) 또는 C:\BuBot\테스트기록\전체기록.html 더블클릭
+웹에서 보낸 질문마다 testlog/ 폴더에 TXT가 저장되고 전체기록.html이 갱신됩니다.
+  (testlog/원본 의 JSON은 웹 뷰어용, Git에 올리지 않음)
+보기: 웹 '지난 질문'(/history) 또는 C:\BuBot\testlog\전체기록.html 더블클릭
 최근 100건 JSON: /api/history, 전체 JSON: /api/history/export
 각 기록의 "처리 시간" 줄에 단계별 시간(질문재구성·질문분석·임베딩·검색·답변생성)이 표시됩니다.
 답변 생성 실패(502) 시 오류 종류를 서버 콘솔과 기록에 남깁니다. 화면에는 상세를 보내지 않습니다.
@@ -220,7 +224,7 @@ web/css/                       화면 스타일 (base, layout, components/*). we
 knowledge/                     안내 문서 원본 (.md)
 data/new_prices.csv            활성 원본 (Git 제외)
 storage/                       문서, 색인 정보(knowledge_index.json), SQLite 벡터 DB (Git 제외)
-테스트기록/                    웹 질문 기록 (Git 제외)
+testlog/                       웹 질문 기록 (Git 제외)
 tests/                         API 호출 없는 자동시험
 evaluations/                   실제 API 정확도 평가
 docs/                          기획서

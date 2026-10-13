@@ -11,7 +11,7 @@ from bubot.source_display import display_sources
 from .layout import render_sidebar
 
 BASE = Path(__file__).resolve().parents[2]
-DIRECTORY = BASE / "테스트기록"
+DIRECTORY = BASE / "testlog"
 LOCK = RLock()
 ROUTE_LABELS = {"numeric": "원본 수치 계산 + 지식 검색 보강", "explain": "지식 문서 검색(RAG)",
                 "rule": "원본 직접 집계·안내 (AI 답변 생성 없음)", "clarify": "확인 질문·범위 안내"}

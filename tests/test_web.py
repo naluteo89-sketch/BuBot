@@ -1,4 +1,4 @@
-"""웹 서버·응답 변환 테스트. 실제 API와 테스트기록 폴더를 사용하지 않습니다."""
+"""웹 서버·응답 변환 테스트. 실제 API와 testlog 폴더를 사용하지 않습니다."""
 import base64
 import contextlib
 import hashlib
