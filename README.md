@@ -30,3 +30,15 @@ BuBot은 사용자가 자연어로 질문하면 아파트 평균 매매가격을
 - [ ] 차트 데이터 추가
 - [ ] 실행방법과 테스트 결과 정리
 - [ ] 최종 버전 저장 및 정확성·일관성 검증 결과에 따라 1차 제작 완료 판단
+
+<img width="576" height="387" alt="image" src="https://github.com/user-attachments/assets/e21da11c-2402-4d9c-9d14-c7d370b8dd97" />
+질문 입력창과 가격 단위 선택, 예시 질문 버튼이 있습니다. 왼쪽 아래 신호등은 AI 연결 상태를 30초마다 확인해 보여줍니다.
+<img width="576" height="292" alt="image" src="https://github.com/user-attachments/assets/17867216-772f-4b4e-875c-de3ebd385ba2" />
+대화 화면: 기간 평균
+"서울 올해 평균 매매가격"에 보유한 8개월(2026-01 ~ 2026-08)의 단순 평균으로 답합니다. 답변마다 출처와 "계산 근거와 출처 확인" 펼침 메뉴가 붙습니다.
+<img width="576" height="450" alt="image" src="https://github.com/user-attachments/assets/6bd20c2f-f635-4e82-a373-fe7b2136060d" />
+대화 화면: 지역 비교
+두 지역의 같은 월 가격과 차이를 계산해 보여줍니다. 왼쪽 사이드바에 진행 중인 대화와 질문 수가 표시됩니다.
+<img width="576" height="450" alt="image" src="https://github.com/user-attachments/assets/13e8c0f4-aad0-4932-a0c6-0980a7f16471" />
+데이터 안내 화면
+보유 기간(2012.01 ~ 2026.08), 데이터 출처, 가격 읽는 법, 후속 질문 안내를 카드 4개로 보여줍니다. 이 밖에 "지난 질문" 화면에서 질문 기록을 볼 수 있고, 대화를 PDF로 저장할 수 있습니다.
