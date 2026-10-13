@@ -44,7 +44,7 @@ def summarize_turn(question, result=None, error=None, standalone=None):
 class ConversationMemory:
     def __init__(self, turns=MEMORY_TURNS, ttl=MEMORY_TTL_SECONDS, max_sessions=MEMORY_MAX_SESSIONS, clock=time.monotonic):
         if turns < 3:
-            raise ValueError('대화 메모리는 최소 3개 턴을 기억해야 합니다.')
+            raise ValueError('대화 메모리는 최소 3개 대화를 기억해야 합니다.')
         self.turns, self.ttl, self.max_sessions, self.clock = turns, ttl, max_sessions, clock
         self._sessions = OrderedDict()
         self._lock = RLock()
