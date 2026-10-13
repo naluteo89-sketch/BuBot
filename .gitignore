@@ -8,3 +8,5 @@ gpt_key.py
 testlog/
 data/
 docs/
+evaluations/
+tests/
