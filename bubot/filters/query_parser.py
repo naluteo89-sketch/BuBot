@@ -63,7 +63,7 @@ def find_threshold(text):
     m = THRESHOLD.search(text)
     if not m:
         return None
-    value = float(m[1]) * UNIT_TO_THOUSAND[m[2].replace(' ', ' ') if m[2] != '천 만' else '천 만']
+    value = float(m[1]) * UNIT_TO_THOUSAND[m[2]]
     if m[3]:
         value += int(m[3]) * 10000  # '3억 5천' = 3억 5천만
     word = m[4].replace(' ', '')

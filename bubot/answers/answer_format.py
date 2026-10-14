@@ -1,4 +1,4 @@
-"""답변 표기: 규칙 답변 형식, 출처 표시명과 한 줄 출처, 금액 단위 통일.
+"""답변 표기: 규칙 답변 형식, 근거별 출처 줄·출처 표시명·한 줄 출처, 금액 단위 통일.
 
 모델이 근거 문서의 천원 표기('286,680천원')를 그대로 옮기거나 직접 환산해 단위가 섞이는 것을 막습니다.
 값은 바꾸지 않고 표기만 사용자가 고른 단위로 맞춥니다.
@@ -6,7 +6,6 @@
 """
 import re
 
-from bubot.config import CSV_PATH
 from bubot.pricing import format_price
 
 SOURCE_LABEL = "공공데이터포털, 한국부동산원_공동주택 실거래가격지수_아파트_월별 지역별 매매"
@@ -17,20 +16,34 @@ _PAREN_THOUSAND = re.compile(r'\s*\(\s*[+-]?\d[\d,]*(?:\.\d+)?\s*천원\s*\)')
 _THOUSAND = re.compile(r'(?<![\d.,])([+-]?\d[\d,]*(?:\.\d+)?)\s*천원')
 
 
+def contexts_of(docs):
+    """문서 객체 → 답변 결과의 근거(contexts) 항목."""
+    return [{'id': d.id, 'text': d.text, 'metadata': d.metadata} for d in docs]
+
+
+def source_line(context):
+    """근거 하나 → ID·출처·지역·기간·원본 행·SHA-256이 담긴 출처 줄 (원본 가격 문서·지식 문서 공통)."""
+    m = context['metadata']
+    if m.get('kind') in {'monthly', 'timeline'}:
+        period = m.get('month') or f"{m.get('start_month')} ~ {m.get('end_month')}"
+        return (f"[{context['id']}] {m['source']} · {m['region_path']} · {period} · 원본 {m['source_row']}행 · "
+                f"SHA-256 {m['source_sha256']}")
+    title = context['text'].splitlines()[0]
+    row = f" · 원본 {m['source_row']}행" if m.get('source_row') else ''
+    return f"[{context['id']}] 지식 문서 · {title} · {m['source']}{row} · SHA-256 {m['source_sha256']}"
+
+
 def rule_answer(answer, facts=(), docs=(), **analysis):
     """규칙 경로(원본 직접 계산) 답변. docs: 근거 월 문서, 출처 줄은 같은 줄을 한 번만 씁니다."""
+    contexts = contexts_of(docs)
     return {'answer': answer, 'facts': list(facts), 'route': 'rule', 'analysis': analysis,
-            'contexts': [{'id': d.id, 'text': d.text, 'metadata': d.metadata} for d in docs],
-            'sources': list(dict.fromkeys(
-                f"[{d.id}] {CSV_PATH.name} · {d.metadata['region_path']} · {d.metadata['month']} · "
-                f"원본 {d.metadata['source_row']}행 · SHA-256 {d.metadata['source_sha256']}" for d in docs))}
+            'contexts': contexts, 'sources': list(dict.fromkeys(source_line(c) for c in contexts))}
 
 
 def clarify_answer(answer, reason, choices=(), **analysis):
     """규칙 경로의 확인·안내 답변 (계산값·근거 없음). choices: 답변 아래 선택지 버튼."""
     return {'answer': answer, 'analysis': {'intent': 'clarify', 'reason': reason, **analysis},
             'contexts': [], 'facts': [], 'sources': [], 'route': 'rule', 'choices': list(choices)}
-
 
 
 def display_sources(result):

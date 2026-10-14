@@ -10,12 +10,8 @@
 """
 import re
 
-from ..dates import now_kst, shift
+from ..dates import month_label, now_kst, shift
 from ..regions import ALIASES
-
-
-def _label(month):
-    return f"{month[:4]}년 {int(month[5:7])}월"
 
 
 # ── 지역 별칭: 동네·생활권 이름 → 데이터 지역명 (괄호는 동 단위 자료가 없다는 안내) ──
@@ -119,23 +115,23 @@ def rewrite(question, months, today=None):
                   lambda m: f"{year + {'재작년': -2, '작년': -1, '지난해': -1}.get(m[1].replace(' ', ''), 0)}년 {int(m[2])}월", text)
     # '올해 들어', '연초부터' → 올해 1월 ~ 최신 월
     text = re.sub(r'(?:올해|올|금년)\s*(?:들어(?:서)?|초부터|부터)|연초\s*부터',
-                  lambda m: f"{_label(min(f'{year}-01', latest))}부터 {_label(latest)}까지", text)
+                  lambda m: f"{month_label(min(f'{year}-01', latest))}부터 {month_label(latest)}까지", text)
     # 명시 월이 하나뿐이고 바로 뒤에 '대비·보다'가 오면 그 달 ~ 최신 월
     explicit = list(re.finditer(r'(?<!\d)(\d{4})\s*년\s*(\d{1,2})\s*월(?P<cmp>' + COMPARE + NOW_AFTER + ')', text))
     if len(re.findall(r'(?<!\d)\d{4}\s*년\s*\d{1,2}\s*월', text)) == 1 and explicit:
         m = explicit[0]
-        text = text[:m.start()] + f"{m[1]}년 {int(m[2])}월부터 {_label(latest)}까지 " + text[m.end():]
+        text = text[:m.start()] + f"{m[1]}년 {int(m[2])}월부터 {month_label(latest)}까지 " + text[m.end():]
 
     def clamp(month, word):
         if month > latest:
-            notes.append(f"'{word}'({_label(month)}) 자료는 아직 없어 최신 보유 월 {_label(latest)} 기준입니다.")
+            notes.append(f"'{word}'({month_label(month)}) 자료는 아직 없어 최신 보유 월 {month_label(latest)} 기준입니다.")
             return latest
         if month < first:
-            notes.append(f"'{word}' → {_label(month)}. 자료는 {_label(first)}부터 있습니다.")
+            notes.append(f"'{word}' → {month_label(month)}. 자료는 {month_label(first)}부터 있습니다.")
         return month
 
     def counted(word, month):
-        notes.append(f"'{word}' → {_label(month)} (최신 보유 월 {_label(latest)}에서 센 시점)")
+        notes.append(f"'{word}' → {month_label(month)} (최신 보유 월 {month_label(latest)}에서 센 시점)")
         return month
 
     # 기준 시점 표현 → (정규식, 월 계산). 비교형('…보다', '…대비', '…부터')은 그 시점 ~ 최신 월 범위입니다.
@@ -155,7 +151,7 @@ def rewrite(question, months, today=None):
         (r'이번\s*달|이달|당월|금월', lambda m: clamp(this_month, m[0])),
         # 월별 자료라 주·일 단위는 없습니다: 오늘이 속한 달(없으면 최신 월)
         (r'지난\s*주|저번\s*주|이번\s*주|금주|어제|오늘|그저께|그제|엊그제|며칠\s*전|요\s*며칠',
-         lambda m: notes.append(f"월별 자료라 '{m[0]}' 같은 주·일 단위 값은 없어 최신 보유 월 {_label(latest)} 기준입니다.")
+         lambda m: notes.append(f"월별 자료라 '{m[0]}' 같은 주·일 단위 값은 없어 최신 보유 월 {month_label(latest)} 기준입니다.")
          or min(this_month, latest)),
         *[(pattern, (lambda month, note: lambda m: notes.append(note) or month)(month, note)) for pattern, month, note in EVENTS],
     ]
@@ -165,7 +161,7 @@ def rewrite(question, months, today=None):
             anchor = re.fullmatch(pattern, m['a'])
             cmp = bool(m['cmp'])
             month = compute(anchor, cmp) if compute.__code__.co_argcount == 2 else compute(anchor)
-            return f"{_label(month)}부터 {_label(latest)}까지 " if cmp else _label(month)
+            return f"{month_label(month)}부터 {month_label(latest)}까지 " if cmp else month_label(month)
         text = re.sub(f'(?P<a>{pattern})(?P<cmp>{COMPARE}{NOW_AFTER})?', replace, text)
 
     # 분기: 오늘 날짜 기준. 자료가 없는 월은 최신 월까지로 줄입니다.
@@ -175,12 +171,12 @@ def rewrite(question, months, today=None):
         q %= 4
         start, end = f"{y}-{q * 3 + 1:02d}", f"{y}-{q * 3 + 3:02d}"
         if start > latest:
-            notes.append(f"'{m[0]}'({_label(start)}~{_label(end)}) 자료는 아직 없어 최신 보유 월 {_label(latest)} 기준입니다.")
-            return _label(latest)
+            notes.append(f"'{m[0]}'({month_label(start)}~{month_label(end)}) 자료는 아직 없어 최신 보유 월 {month_label(latest)} 기준입니다.")
+            return month_label(latest)
         if end > latest:
-            notes.append(f"'{m[0]}'({_label(start)}~{_label(end)}) 중 {_label(latest)}까지만 자료가 있습니다.")
+            notes.append(f"'{m[0]}'({month_label(start)}~{month_label(end)}) 중 {month_label(latest)}까지만 자료가 있습니다.")
             end = latest
-        return f"{_label(start)}부터 {_label(end)}까지"
+        return f"{month_label(start)}부터 {month_label(end)}까지"
     text = re.sub(r'지난\s*분기|전\s*분기|직전\s*분기|이번\s*분기', quarter, text)
 
     # 'N년 사이·새' → '최근 N년' ('N년간·동안'은 기존 규칙이 기간으로 처리합니다)

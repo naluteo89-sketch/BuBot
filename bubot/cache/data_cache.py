@@ -33,6 +33,17 @@ def documents_by_id(corpus):
         return cached[1]
 
 
+def monthly_doc(corpus, region_id, month):
+    """지역·월의 원본 월 문서 (없으면 None)."""
+    return documents_by_id(corpus).get(f"region-{region_id}-month-{month}")
+
+
+def monthly_docs(corpus, region_ids, months):
+    """원본 월 문서 중 region_ids 지역·months 월에 해당하는 것 (원본 순서 유지)."""
+    return [d for d in corpus.documents if d.metadata['kind'] == 'monthly'
+            and d.metadata['region_id'] in region_ids and d.metadata['month'] in months]
+
+
 def load_knowledge(corpus=None, guide_dir: Path = KNOWLEDGE_DIR):
     corpus = corpus or load_corpus()
     guides = tuple(_stamp(p) for p in sorted(Path(guide_dir).glob('*.md')))

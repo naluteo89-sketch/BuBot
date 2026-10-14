@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..config import KNOWLEDGE_DIR, KNOWLEDGE_VERSION
-from ..dates import shift
+from ..dates import shift, year_range
 from .documents import Corpus, Document, read_corpus
 from ..pricing import format_price
 from ..regions import region_catalog
@@ -215,9 +215,7 @@ def market_summaries(corpus: Corpus, catalog=None):
 
     years = sorted({m[:4] for m in corpus.months})
     for year in years:
-        in_year = [m for m in corpus.months if m.startswith(year)]
-        start = f"{int(year) - 1}-12" if f"{int(year) - 1}-12" in corpus.months else in_year[0]
-        end = in_year[-1]
+        start, end = year_range(year, corpus.months)
         partial = not end.endswith('-12')
         meta = {'kind': 'market_annual', 'year': year, 'start_month': start, 'end_month': end, 'source': source,
                 'source_sha256': corpus.source_hash, 'knowledge_version': KNOWLEDGE_VERSION}

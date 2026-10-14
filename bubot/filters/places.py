@@ -17,37 +17,29 @@ PLACE_WORDS = re.compile(r'근처|주변|인근|부근|근방|일대|일원|공�
                          r'필드|파크|스타디움|돔|대학|캠퍼스|병원|공원|타워|해수욕장|터미널|청사|시청|구청|신도시|단지|랜드|월드|센터')
 
 
-def ambiguous_place_candidates(question):
-    """'광교' → ('광교', ['수원시 영통구', '용인시 수지구']). 선택지 버튼용."""
-    for place, candidates in AMBIGUOUS_PLACES.items():
-        if place in question and ',' in candidates:
-            return place, [c.strip() for c in candidates.split(',')]
-    return None
-
-
 def ambiguous_place(question):
-    """'광교 집값'처럼 여러 시군구에 걸친 생활권이면 확인 안내문. 아니면 None."""
+    """'광교 집값'처럼 여러 시군구에 걸친 생활권이면 후보 지역 선택지를 붙인 확인 답변. 아니면 None."""
     for place, candidates in AMBIGUOUS_PLACES.items():
         if place in question and ',' in candidates:
-            return (f"'{place}'은(는) 여러 시군구에 걸친 생활권이고 동 단위 자료가 없습니다. "
-                    f"다음 중 하나를 골라 다시 물어보세요: {candidates}.")
+            catalog = region_catalog(load_corpus())
+            labels = []
+            for name in candidates.split(','):
+                region = address_region(name.strip(), catalog)  # '수원시 영통구' → 지역 label
+                labels.append(region['label'] if region else name.strip())
+            return clarify_answer(f"'{place}'은(는) 여러 시군구에 걸친 생활권이고 동 단위 자료가 없습니다. "
+                                  f"다음 중 하나를 골라 다시 물어보세요: {candidates}.", 'out_of_scope',
+                                  candidate_choices(question, place, labels))
     return None
 
 
-def _no_region_written(question):
-    corpus = load_corpus()
-    return not find_regions(canonical_names(question), region_catalog(corpus))
+def _place_question(question, kwargs):
+    """지역 ID·지역명 없이 가격을 묻는 질문인지 (장소 이름일 수 있음)."""
+    return (not kwargs.get('region_id') and PLACE_PRICE.search(question)
+            and not find_regions(canonical_names(question), region_catalog(load_corpus())))
 
 
 def mentions_place(question, kwargs):
-    return (not kwargs.get('region_id') and PLACE_PRICE.search(question) and PLACE_WORDS.search(question)
-            and _no_region_written(question))
-
-
-def label_of(text):
-    """'수원시 영통구' 같은 이름 → 지역 label (없으면 원문)."""
-    region = address_region(text, region_catalog(load_corpus()))
-    return region['label'] if region else text
+    return PLACE_WORDS.search(question) and _place_question(question, kwargs)
 
 
 def _clarify(answer, reason, choices=()):
@@ -61,7 +53,7 @@ def locate(question, kwargs):
     지역 목록의 지역 하나로 해석되는지, 질문에 넣을 짧은 이름이 그 지역으로만 해석되는지 코드로 검증합니다.
     반환: ('question', 다시 조회할 질문, 안내문) | ('answer', 확인 질문 결과, None) | None(장소 아님)
     """
-    if kwargs.get('region_id') or not PLACE_PRICE.search(question) or not _no_region_written(question):
+    if not _place_question(question, kwargs):
         return None
     catalog = region_catalog(load_corpus())
     try:

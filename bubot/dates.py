@@ -1,4 +1,4 @@
-"""날짜·월 계산 공용 함수: 한국 시간(KST) 현재 시각, 'YYYY-MM' 월 이동·개월 수, 두 자리 연도."""
+"""날짜·월 계산 공용 함수: 한국 시간(KST) 현재 시각, 'YYYY-MM' 월 이동·개월 수·표기, 두 자리 연도, 그 해의 보유 월."""
 from datetime import datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
@@ -38,3 +38,23 @@ def months_between(start, end):
 def months_in_year(months, year):
     """보유 월 목록 중 그 해(year: 2025 또는 '2025')의 월."""
     return [m for m in months if m.startswith(f"{year}-")]
+
+
+def month_label(month):
+    """'YYYY-MM' → 'YYYY년 M월'."""
+    return f"{month[:4]}년 {int(month[5:7])}월"
+
+
+def year_point(year, months):
+    """연도만 지정된 단일 시점: 그 해의 마지막 보유 월."""
+    in_year = months_in_year(months, year)
+    return in_year[-1] if in_year else None
+
+
+def year_range(year, months):
+    """연도만 지정된 추이: 전년 12월(없으면 그 해 첫 보유 월) ~ 그 해 마지막 보유 월."""
+    in_year = months_in_year(months, year)
+    if not in_year:
+        return None, None
+    previous = f"{int(year) - 1}-12"
+    return (previous if previous in months else in_year[0]), in_year[-1]

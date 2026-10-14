@@ -7,7 +7,7 @@ import re
 from ..config import MAX_REGIONS
 from ..dates import months_between, shift
 from ..llm.schemas import Analysis
-from ..regions import canonical_names, find_regions, resolve_region
+from ..regions import canonical_names, find_regions, resolve_region, short_form
 from .period_parser import explicit_years, parse_period
 from .query_parser import find_cues, parse_question
 
@@ -158,7 +158,8 @@ def written_scope(name, text):
 def _token_written(token, text):
     if len(token) < 2:  # '시' 같은 한 글자는 어느 질문에나 들어 있어 근거가 되지 않습니다
         return False
-    return token in text or (len(token) > 2 and token.endswith(('시', '군', '구')) and token[:-1] in text)
+    stem = short_form(token)
+    return token in text or (stem is not None and stem in text)
 
 
 def resolve_ids(names, question, catalog, region_id=None):
@@ -194,7 +195,7 @@ def _written_region(name, question, catalog):
     last = [t for t in re.split(r'[\s/]+', clean_names([name])[0] if clean_names([name]) else '') if t]
     if not last:
         return None
-    stems = {last[-1], last[-1][:-1] if len(last[-1]) > 2 and last[-1].endswith(('시', '군', '구')) else last[-1]}
+    stems = {last[-1], short_form(last[-1]) or last[-1]}
     found = {m.candidates[0] for m in find_regions(canonical_names(question), catalog)
              if len(m.candidates) == 1 and not m.qualifier
              and (catalog[m.candidates[0]]['name'] in stems or m.text in stems)}
@@ -248,7 +249,7 @@ def _written_alone(region, descendants, text):
     for d in descendants:
         path = d['path']
         following.update(path[path.index(region['name']) + 1:] if region['name'] in path else path)
-    following |= {p[:-1] for p in following if len(p) > 2 and p.endswith(('시', '군', '구'))}
+    following |= {short_form(p) for p in following if short_form(p)}
     for match in re.finditer(re.escape(region['name']), text):
         if any(len(p) > len(region['name']) and text.startswith(p, match.start()) for p in following):
             continue  # '제주시' 안의 '제주'처럼 하위 지역 이름의 일부

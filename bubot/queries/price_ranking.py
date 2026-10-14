@@ -3,12 +3,12 @@
 """
 import re
 
-from ..answers.answer_format import rule_answer
-from ..cache.data_cache import load_corpus
+from ..answers.answer_format import contexts_of, rule_answer
+from ..cache.data_cache import load_corpus, monthly_docs
 from ..filters.period_parser import parse_period
 from ..filters.query_parser import find_level, find_threshold
 from ..pricing import format_price
-from ..regions import named_region, ranking_regions, region_catalog, resolve_region
+from ..regions import named_region, ranking_regions, region_catalog, resolve_region, scope_regions
 
 LIST_LIMIT = 30
 OP_WORDS = {'>=': '이상', '>': '초과', '<=': '이하', '<': '미만'}
@@ -27,9 +27,8 @@ def price_filter(question, corpus, unit):
     period = parse_period(question, corpus.months)
     month = period.month if period.kind == 'point' and period.month in corpus.months else corpus.months[-1]
     level = find_level(question) or ('시도' if re.search(r'시도|광역', question) else '시군구')
-    allowed = {scope['id']} if scope and scope['level'] == '시군구' else ranking_regions(catalog, scope['id'] if scope else None, level)
-    docs = [d for d in corpus.documents if d.metadata['kind'] == 'monthly' and d.metadata['month'] == month
-            and d.metadata['region_id'] in allowed and d.metadata.get('price_thousand_krw') is not None]
+    docs = [d for d in monthly_docs(corpus, scope_regions(catalog, scope, level), (month,))
+            if d.metadata.get('price_thousand_krw') is not None]
     test = {'>=': lambda p: p >= value, '>': lambda p: p > value, '<=': lambda p: p <= value, '<': lambda p: p < value}[op]
     hits = sorted((d for d in docs if test(d.metadata['price_thousand_krw'])), key=lambda d: d.metadata['price_thousand_krw'])
     where = scope['label'] if scope else '전국'
@@ -53,7 +52,8 @@ def price_filter(question, corpus, unit):
                      level=level, count=len(hits), candidates=len(docs))
 
 
-def _aggregate_price(filters: dict, *, mode: str) -> dict:
+def rank_prices(filters: dict, *, mode: str) -> dict:
+    """조건(월·지역·계층) 안의 월 문서를 가격순으로 정렬한 최고(mode='max')·최저(mode='min') 문서와 상위 목록."""
     if mode not in {"max", "min"}:
         raise ValueError("mode는 'max' 또는 'min'이어야 합니다.")
     corpus = load_corpus()
@@ -66,9 +66,7 @@ def _aggregate_price(filters: dict, *, mode: str) -> dict:
         scope = resolve_region(filters['region_name'], catalog)
     level = filters.get('level') or '시군구'
     allowed = ranking_regions(catalog, scope, level)
-    rows = [{"id": d.id, "text": d.text, "metadata": d.metadata} for d in corpus.documents
-            if d.metadata['kind'] == 'monthly' and d.metadata['month'] == month
-            and d.metadata['region_id'] in allowed and not d.metadata['missing']]
+    rows = [c for c in contexts_of(monthly_docs(corpus, allowed, (month,))) if not c['metadata']['missing']]
     if not rows:
         return {"error": f"{month} 조건에 맞는 문서가 없습니다."}
     # 상위 몇 개도 함께 전달합니다 (LLM이 "2위와의 차이"를 언급할 수 있도록).
@@ -79,13 +77,3 @@ def _aggregate_price(filters: dict, *, mode: str) -> dict:
         "filters": {"month": month, "level": level, "region_id": filters.get("region_id"), "kind": "monthly"},
         "top": rows[:filters.get("top_n") or 5],
     }
-
-
-def argmax_price(filters: dict) -> dict:
-    """조건 내에서 price_thousand_krw 최댓값 문서 반환."""
-    return _aggregate_price(filters, mode="max")
-
-
-def argmin_price(filters: dict) -> dict:
-    """조건 내에서 price_thousand_krw 최솟값 문서 반환."""
-    return _aggregate_price(filters, mode="min")

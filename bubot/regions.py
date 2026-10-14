@@ -34,11 +34,10 @@ def resolve_region(name, catalog):
         matches = [r for r in catalog.values() if r["name"] == "광주" and r["level"] == "시도"]
         if len(matches) == 1:
             return matches[0]["id"]
-    for alias, canonical in ALIASES.items():
-        name = name.replace(alias,canonical)
+    name = canonical_names(name)
     tokens = [t for t in re.split(r'[\s/]+',name.strip()) if t]
     def aliases(value):
-        return {value, value[:-1]} if len(value)>2 and value.endswith(('시','군','구')) else {value}
+        return {value, short_form(value) or value}
     candidates = [r for r in catalog.values() if tokens[-1] in aliases(r['name'])
                   and all(any(t in aliases(p) for p in r['path']) for t in tokens[:-1])]
     exact = [r for r in candidates if r['name'] == tokens[-1]]
@@ -60,6 +59,18 @@ def ranking_regions(catalog, scope=None, level='시군구'):
     parent = catalog.get(scope)
     return {r['id'] for r in catalog.values() if r['level']==level and not r['name'].startswith('(구)')
             and (not parent or parent['name']=='전국' or all(p in r['path'] for p in parent['path']))}
+
+
+def scope_regions(catalog, scope, level):
+    """순위·가격 조건 비교 대상: 범위가 시군구 하나면 그 지역만, 아니면 범위(없으면 전국) 안의 level 지역."""
+    if scope and scope['level'] == '시군구':
+        return {scope['id']}
+    return ranking_regions(catalog, scope['id'] if scope else None, level)
+
+
+def short_form(name):
+    """시·군·구를 뗀 약칭 ('강남구' → '강남'). 세 글자 이상인 시·군·구 이름만, 아니면 None."""
+    return name[:-1] if len(name) > 2 and name.endswith(('시', '군', '구')) else None
 
 
 def canonical_names(question):
@@ -109,14 +120,10 @@ def _forms(catalog_key):
             for long_form, short in PROVINCE_FORMS.items():
                 if short == name:
                     add(long_form, rid, True)
-        clean = name.replace('(구)', '')
-        if len(clean) >= 3 and clean.endswith(('시', '군', '구')) and not name.startswith('(구)'):
-            stem = clean[:-1]
-            if stem not in RISKY_STEMS:
-                add(stem, rid, False)
-        for suffix in ('지역', '권'):
-            if level == '권역' and name.endswith(suffix) and len(name) - len(suffix) >= 2 and name not in ('수도권', '지방권'):
-                pass  # 권역은 정식 이름으로만 찾습니다 ('강남'은 강남구, '강남지역'은 권역)
+        stem = short_form(name.replace('(구)', ''))
+        if stem and not name.startswith('(구)') and stem not in RISKY_STEMS:
+            add(stem, rid, False)
+        # 권역은 정식 이름으로만 찾습니다 ('강남'은 강남구, '강남지역'은 권역)
     pattern = re.compile('|'.join(re.escape(f) for f in sorted(forms, key=len, reverse=True)))
     return forms, pattern
 

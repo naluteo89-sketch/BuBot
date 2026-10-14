@@ -2,8 +2,8 @@
 import {request} from './api.js';
 import {message} from './components/message.js';
 import {composer} from './components/composer.js';
-import {status} from './components/status.js';
-import {loadChat, saveChat, clearChat, showChatCount, chatTitle} from './components/chat-store.js';
+import {loadStatus} from './components/status.js';
+import {loadChat, saveChat, endChat, showChatCount, chatTitle} from './components/chat-store.js';
 import {copyToClipboard, plainAnswer} from './components/clipboard.js';
 import './components/sidebar.js';
 
@@ -185,8 +185,7 @@ document.querySelector('#composer').append(input.element);
 
 reset.addEventListener('click', () => {
   if (pendingRequest) return;
-  request('api/reset', {session_id: state.sessionId}).catch(() => {});
-  clearChat();
+  endChat(state.sessionId);
   location.href = './';
 });
 
@@ -230,8 +229,4 @@ if (params.get('print') && state.turns.length) {
   setTimeout(() => window.print(), 400);
 }
 
-request('api/status').then(data => status(document.querySelector('#status'), data)).catch(() => {
-  const element = document.querySelector('#status');
-  element.textContent = '연결을 확인해 주세요';
-  element.classList.add('unavailable');
-});
+loadStatus();

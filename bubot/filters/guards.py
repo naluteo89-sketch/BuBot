@@ -8,7 +8,7 @@ import re
 
 from ..answers.answer_format import clarify_answer
 from ..config import CSV_PATH
-from ..dates import months_in_year, this_year
+from ..dates import month_label, months_in_year, this_year
 from .period_parser import explicit_years, parse_period
 
 RENT = re.compile(r'전세|월세|전월세|반전세|임대료|보증금')
@@ -57,10 +57,9 @@ def unavailable(question, months):
         return clarify_answer(text, 'out_of_scope')
     written = parse_period(question, months)
     if written.beyond:
-        when = f'{int(written.beyond[:4])}년 {int(written.beyond[5:])}월'
-        text = (f'{when}({written.beyond}) 자료는 없습니다. 보유 기간은 {months[0]} ~ {months[-1]}이며, '
+        text = (f'{month_label(written.beyond)}({written.beyond}) 자료는 없습니다. 보유 기간은 {months[0]} ~ {months[-1]}이며, '
                 '보유 기간 이후의 가격은 예측하거나 최신 월 값으로 대신 답하지 않습니다. '
-                f"최신 값은 '{int(months[-1][:4])}년 {int(months[-1][5:])}월 가격'처럼 보유한 월로 물어보세요.")
+                f"최신 값은 '{month_label(months[-1])} 가격'처럼 보유한 월로 물어보세요.")
         if '지수' in question:
             text += ' 참고로 이 자료는 매매가격지수가 아니라 지역별 아파트 월평균 매매가격입니다.'
         return clarify_answer(text, 'beyond_data', requested=written.beyond)
@@ -90,8 +89,8 @@ def year_coverage(question, months, *, today=None):
     # 월이 명시된 조회는 기존 월별 조회로 넘깁니다.
     if not years or re.search(r"[0-9]+\s*월|[0-9]{4}-[0-9]{2}", question):
         return None
-    complete = {y for y in years if len({m for m in months if m.startswith(f"{y}-")}) == 12}
-    present = {y for y in years if any(m.startswith(f"{y}-") for m in months)}
+    complete = {y for y in years if len(set(months_in_year(months, y))) == 12}
+    present = {y for y in years if months_in_year(months, y)}
     whole_year = re.search(r"평균|합산|합계|총|연간|전체|자료|데이터|보유", question)
     # 전체 연도가 있으면 RAG 라우터(연간 시장 요약 검색 등)로 넘깁니다.
     if years <= complete or (years <= present and not whole_year):

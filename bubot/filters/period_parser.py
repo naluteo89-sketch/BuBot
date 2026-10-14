@@ -6,7 +6,7 @@
 import re
 from dataclasses import dataclass, field
 
-from ..dates import full_year, months_in_year, now_kst, shift
+from ..dates import full_year, now_kst, shift
 
 
 @dataclass
@@ -59,14 +59,12 @@ def _period_tokens(text, today, latest):
     def year_months(y):
         return f"{y}-01", f"{y}-12"
 
-    for m in re.finditer(r'(?:최근|지난)\s*(\d+)\s*(개월|달|년)(?:\s*(?:간|동안))?', text):
-        n, unit = int(m[1]), m[2]
-        span = n * 12 if unit == '년' else max(n - 1, 0)
-        add(_token('range', shift(latest, -span), latest, m.span(), recent=True))
-    for m in re.finditer(r'(?<![\d.])(\d+)\s*(개월|달|년)\s*(?:간|동안)', text):
-        n, unit = int(m[1]), m[2]
-        span = n * 12 if unit == '년' else max(n - 1, 0)
-        add(_token('range', shift(latest, -span), latest, m.span(), recent=True))
+    # '최근 N년'·'N개월간': 최신 월까지의 기간 ('최근' 쪽이 먼저 자리를 차지합니다)
+    for pattern in (r'(?:최근|지난)\s*(\d+)\s*(개월|달|년)(?:\s*(?:간|동안))?', r'(?<![\d.])(\d+)\s*(개월|달|년)\s*(?:간|동안)'):
+        for m in re.finditer(pattern, text):
+            n, unit = int(m[1]), m[2]
+            span = n * 12 if unit == '년' else max(n - 1, 0)
+            add(_token('range', shift(latest, -span), latest, m.span(), recent=True))
     for m in re.finditer(r'(?:작년|지난\s*해|전년)\s*(?:같은\s*달\s*|동월\s*|이맘때\s*)?(?:대비|보다|와\s*비교|과\s*비교|이랑\s*비교)', text):
         add(_token('range', shift(latest, -12), latest, m.span(), recent=True))
     for m in re.finditer(r'(?<![\d.])(\d+)\s*(년|개월|달)\s*(?:전|이전)', text):
@@ -203,21 +201,6 @@ def _fit_to_data(period, first, latest):
         if period.start == period.end:
             period.kind, period.month = 'point', period.start
     return period
-
-
-def year_point(year, months):
-    """연도만 지정된 단일 시점: 그 해의 마지막 보유 월."""
-    in_year = months_in_year(months, year)
-    return in_year[-1] if in_year else None
-
-
-def year_range(year, months):
-    """연도만 지정된 추이: 전년 12월(없으면 그 해 첫 보유 월) ~ 그 해 마지막 보유 월."""
-    in_year = months_in_year(months, year)
-    if not in_year:
-        return None, None
-    previous = f"{int(year) - 1}-12"
-    return (previous if previous in months else in_year[0]), in_year[-1]
 
 
 # 질문에 연도로 적힌 값 ────────────────────────────────────────
