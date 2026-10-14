@@ -11,6 +11,7 @@
 import re
 
 from ..dates import now_kst, shift
+from ..regions import ALIASES
 
 
 def _label(month):
@@ -75,6 +76,18 @@ def _numbers(text):
     return re.sub(r'(?<![\d.])(\d+)\s*달' + AFTER, r'\1개월', text)
 
 
+# 띄어 쓴 시도 정식 이름('광주 광역시', '서울 특별시')은 붙여 씁니다. 지역 목록·광주 구분은 붙여 쓴 이름만 알아봅니다.
+SPACED_PROVINCE = re.compile(r'([가-힣]{2})\s+(특별시|광역시|특별자치시|특별자치도)')
+# 앞 연도에 '년'이 빠진 연도 범위('2013~2016년', '2013부터 2016년까지')는 두 연도 모두 '년'을 붙입니다.
+# 그대로 두면 뒤 연도만 연도로 읽혀 '2016년' 한 해로 계산됩니다.
+YEAR_RANGE = re.compile(r'(?<!\d)(\d{4})(\s*(?:~|∼|-|–|부터|에서)\s*)(\d{4}|\d{2})(?=\s*년)')
+
+
+def _explicit_forms(text):
+    text = SPACED_PROVINCE.sub(lambda m: m[1] + m[2] if m[1] + m[2] in ALIASES else m[0], text)
+    return YEAR_RANGE.sub(lambda m: f'{m[1]}년{m[2]}{m[3]}', text)
+
+
 def rewrite(question, months, today=None):
     """(바꾼 질문, 안내 목록). months: 보유 월 목록(정렬)."""
     today = today or now_kst()
@@ -82,7 +95,7 @@ def rewrite(question, months, today=None):
     this_month = f"{today.year}-{today.month:02d}"
     year = today.year
     notes = []
-    text = question
+    text = _explicit_forms(question)
 
     text = _han_river(text, notes)
     for pattern, target, place in REGION_SLANG:
