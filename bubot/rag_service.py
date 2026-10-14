@@ -240,8 +240,10 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
         intent=analysis['intent']='lookup'  # 상위 지역을 정리하고 나니 한 지역 조회
     if intent in {'lookup','trend','compare'} and not ids:
         raise ValueError('조회할 지역명을 입력해주세요.')
-    if intent=='compare' and len(ids)<2:
-        raise ValueError('비교할 지역을 두 개 이상 입력해주세요.')
+    if intent=='compare' and len(ids)==1:
+        # 후속 질문 재구성(GPT)이 '그럼 부산은?'을 '부산 … 비교'로 바꾸면 지역이 하나뿐입니다. 오류 대신 그 지역을 조회합니다.
+        intent=analysis['intent']='lookup'
+        analysis['region_note']='비교할 다른 지역이 없어 이 지역 값만 조회했습니다.'
     if intent=='lookup' and len(ids)>1:
         intent=analysis['intent']='compare'
     period_note=analysis.get('period_note')
