@@ -1,5 +1,6 @@
 // 진행 중인 대화 보관소. '새 대화'를 누르기 전까지 페이지를 옮기거나 브라우저를 다시 열어도 유지됩니다.
 // 이 기기·브라우저에만 저장됩니다. 저장이 막힌 환경(사생활 보호 모드 등)에서도 화면은 동작합니다.
+import {request} from '../api.js';
 import {EXAMPLE_LABELS} from './suggestions.js';
 
 const KEY = 'bubot.chat';
@@ -20,9 +21,15 @@ export function saveChat(state) {
   showChatCount(state);
 }
 
-export function clearChat() {
+function clearChat() {
   try { localStorage.removeItem(KEY); } catch { /* 무시 */ }
   showChatCount({turns: []});
+}
+
+// 대화 끝내기: 서버의 대화 기억을 지우고(실패해도 무시) 이 브라우저에 저장된 대화도 지웁니다.
+export function endChat(sessionId = loadChat().sessionId) {
+  request('api/reset', {session_id: sessionId}).catch(() => {});
+  clearChat();
 }
 
 const DEFAULT_NAV = '진행 중인 대화';

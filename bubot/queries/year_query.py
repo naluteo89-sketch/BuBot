@@ -1,10 +1,12 @@
 """작년 질문은 보유한 작년 월에 한정해 조회/집계합니다."""
 import re
-from ..regions import child_regions, named_region, ranking_regions, region_catalog, region_text, short_name
+from ..regions import child_regions, named_region, region_catalog, region_text, scope_regions, short_name
+from ..answers.answer_format import contexts_of
 from ..answers.choices import subregion_choices
+from ..cache.data_cache import monthly_doc, monthly_docs
 from ..pricing import format_price
 from ..config import CSV_PATH
-from ..dates import full_year, months_in_year, this_year
+from ..dates import full_year, month_label, months_in_year, this_year
 from ..filters.period_parser import explicit_years
 
 # 변화·순위를 묻는 '작년' 질문은 이 규칙이 아니라 일반 경로(GPT 분석 → 수치/서술)에서 답합니다.
@@ -52,15 +54,12 @@ def last_year_answer(question, corpus, unit, *, today=None):
     low = bool(re.search('최저|가장 싼|가장 낮은', question))
     if high or low:
         level = '시도' if '시도' in question else '시군구'
-        allowed = ({scope['id']} if scope and scope['level']=='시군구' else
-                   ranking_regions(catalog, scope['id'] if scope else None, level))
+        allowed = scope_regions(catalog, scope, level)
     elif scope:
         allowed = {scope['id']}
     else:
         return reply(f'{year}년 보유 월은 {", ".join(months)}입니다. 조회할 지역을 지정해주세요.', [], [], year, months)
-    docs = [d for d in corpus.documents if d.metadata['kind']=='monthly'
-            and d.metadata['month'] in months and d.metadata['region_id'] in allowed
-            and d.metadata.get('price_thousand_krw') is not None]
+    docs = [d for d in monthly_docs(corpus, allowed, months) if d.metadata.get('price_thousand_krw') is not None]
     note = f'{year}년 보유 데이터({_month_span(months, corpus.months)})만 사용했습니다. '
     if len(months_in_year(corpus.months, year)) < 12:
         note += '나머지 월은 원본 CSV에 없어 연간 전체를 대표하지 않습니다. '
@@ -74,7 +73,7 @@ def last_year_answer(question, corpus, unit, *, today=None):
     # 결론 한 문장을 먼저 두고(페르소나 답변 형식과 같은 순서), 계산값과 사용한 월·비교 범위 안내를 뒤에 붙입니다.
     headline = _headline(selected, scope, level if high or low else None, high, low, year, unit)
     result = reply(headline + '\n\n' + '\n'.join('- ' + f for f in facts) + '\n\n' + note, facts, selected, year, months)
-    result['contexts'] = [{'id':d.id,'text':d.text,'metadata':d.metadata} for d in selected]
+    result['contexts'] = contexts_of(selected)
     if high or low:
         result['analysis']['price_extreme'] = True
     return result
@@ -136,13 +135,10 @@ def region_records(question, corpus, unit):
     children = child_regions(scope, catalog)
     include = bool(WITH_CHILDREN.search(question)) and len(children) <= MAX_LISTED_CHILDREN
     regions = [scope] + (children if include else [])
-    wanted = {r['id'] for r in regions}
-    docs = {(d.metadata['region_id'], d.metadata['month']): d for d in corpus.documents
-            if d.metadata['kind'] == 'monthly' and d.metadata['region_id'] in wanted and d.metadata['month'] in months}
     facts, used = [], []
     for region in regions:
         for month in months:
-            doc = docs.get((region['id'], month))
+            doc = monthly_doc(corpus, region['id'], month)
             price = doc and doc.metadata.get('price_thousand_krw')
             facts.append(f"{month} {region['label']}: {format_price(price, unit) if price is not None else '결측'}")
             if doc is not None:
@@ -156,18 +152,18 @@ def region_records(question, corpus, unit):
         notes.append(f'{year}년은 원본에 {len(in_year)}개월({in_year[0]} ~ {in_year[-1]})만 있어 그 달만 표시했습니다.')
     choices, ask_children = [], ''
     if children and not include:
-        period_text = f'{year}년 {int(months[0][5:])}월' if len(months) == 1 and requested else f'{year}년'
+        period_text = month_label(months[0]) if len(months) == 1 and requested else f'{year}년'
         choices, ask_children = subregion_choices(scope, catalog, period_text, '기록 전부')
     elif children and len(children) > MAX_LISTED_CHILDREN:
         notes.append(f"하위 지역 {len(children)}곳은 목록이 길어 생략했습니다. '{short_name(scope['label'], None)} 시군구 "
-                     f"{months[-1][:4]}년 {int(months[-1][5:])}월 가격 순위'처럼 물어보세요.")
+                     f"{month_label(months[-1])} 가격 순위'처럼 물어보세요.")
     notes.append('값은 개별 실거래 가격이 아닌 지역별 아파트 월평균 매매가격입니다.')
     if ask_children:
         notes.append(ask_children)
     result = reply(headline + '\n\n' + '\n'.join('- ' + f for f in facts) + '\n\n' + ' '.join(notes), facts, used, year, in_year)
     result['analysis'].update(intent='region_records', resolved_region_ids=[r['id'] for r in regions],
                               resolved_start=months[0], resolved_end=months[-1])
-    result['contexts'] = [{'id': d.id, 'text': d.text, 'metadata': d.metadata} for d in used]
+    result['contexts'] = contexts_of(used)
     result['choices'] = choices
     return result
 

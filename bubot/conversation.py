@@ -15,7 +15,7 @@ from collections import OrderedDict, deque
 from threading import RLock
 
 from . import rag_service
-from .answers.answer_format import display_sources
+from .answers.answer_format import display_sources, rule_answer
 from .answers.choices import candidate_choices
 from .cache.answer_cache import ANSWER_CACHE, cache_key
 from .cache.data_cache import load_corpus
@@ -158,8 +158,8 @@ def _converse(question, history=None, **kwargs):
     if converted:
         question = converted
     if annual_mean_concept(question):
-        result={'answer':'네. 이 서비스에서 연간 평균을 요청하면 해당 연도의 월평균 매매가격을 합해 유효한 월 수로 나눈 단순 평균을 사용합니다. 12개월이 모두 있으면 12로 나누며, 결측 월은 제외하고 사용한 월 수를 밝힙니다. 12월 가격 하나는 연평균이 아닙니다. 거래 건수로 가중한 개별 실거래 평균과도 다릅니다.',
-                'analysis':{'intent':'concept'},'facts':[],'sources':[],'contexts':[],'route':'rule','standalone_question':question,'followup':False,'timings':{}}
+        result={**rule_answer('네. 이 서비스에서 연간 평균을 요청하면 해당 연도의 월평균 매매가격을 합해 유효한 월 수로 나눈 단순 평균을 사용합니다. 12개월이 모두 있으면 12로 나누며, 결측 월은 제외하고 사용한 월 수를 밝힙니다. 12월 가격 하나는 연평균이 아닙니다. 거래 건수로 가중한 개별 실거래 평균과도 다릅니다.',
+                                intent='concept'),'standalone_question':question,'followup':False,'timings':{}}
         if history:
             for turn in reversed(history):
                 resolved=turn.get('resolved') or {}
@@ -170,13 +170,12 @@ def _converse(question, history=None, **kwargs):
         return result
     # 개념 질문은 대화의 특정 수치 질문으로 재구성하지 않습니다.
     if negative_concept(question):
-        return {'answer':'네. 변동률은 비교 기준보다 가격이 내려가면 음수가 됩니다. '
-                         '변동률 = (현재 가격 − 기준 가격) ÷ 기준 가격 × 100입니다. '
-                         '예를 들어 1억원에서 9천만원으로 내려가면 -10%입니다. '
-                         '특정 지역·월의 변동률이 양수인 것과 음수가 될 수 있는지는 별개의 질문입니다. '
-                         '기준 가격이 0이면 이 식으로 변동률을 계산할 수 없습니다.',
-                'analysis':{'intent':'concept'},'facts':[],'sources':[],'contexts':[],
-                'route':'rule','standalone_question':question,'followup':False,'timings':{}}
+        return {**rule_answer('네. 변동률은 비교 기준보다 가격이 내려가면 음수가 됩니다. '
+                              '변동률 = (현재 가격 − 기준 가격) ÷ 기준 가격 × 100입니다. '
+                              '예를 들어 1억원에서 9천만원으로 내려가면 -10%입니다. '
+                              '특정 지역·월의 변동률이 양수인 것과 음수가 될 수 있는지는 별개의 질문입니다. '
+                              '기준 가격이 0이면 이 식으로 변동률을 계산할 수 없습니다.', intent='concept'),
+                'standalone_question':question,'followup':False,'timings':{}}
     # 재구성(GPT) 전에 원래 질문으로 확인합니다 ('실거래가'가 '매매가격'으로 바뀌면 단지 질문을 놓침).
     blocked=unavailable(question,load_corpus().months) if history else None
     if blocked is not None:

@@ -8,27 +8,28 @@
 """
 import re
 
-from .answers.answer_format import clarify_answer
-from .answers.choices import candidate_choices, subregion_choices
+from .answers.answer_format import source_line
+from .answers.choices import subregion_choices
 from .answers.generation import generate
 from .cache.data_cache import documents_by_id, load_corpus, load_knowledge
 from .config import (DEFAULT_TOP_N, DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, KNOWLEDGE_FALLBACK_K,
                      KNOWLEDGE_SEARCH_LIMIT, KNOWLEDGE_TOP_K)
+from .dates import month_label, months_in_year, year_point, year_range
 from .embedding.knowledge_index import GUIDE_KINDS, retrieve, validate_knowledge_index
 from .filters.analysis_correction import (NUMERIC_INTENTS, analysis_from_code, apply_relative_period, clarify_fallback,
                                          clean_names, limit_regions, narrow_ids, resolve_ids, written_scope, year_only)
 from .filters.expressions import rewrite
 from .filters.guards import gwangju_clarification, unavailable, year_coverage
-from .filters.period_parser import explicit_years, year_point, year_range
-from .filters.places import ambiguous_place, ambiguous_place_candidates, label_of, locate, mentions_place
+from .filters.period_parser import explicit_years
+from .filters.places import ambiguous_place, locate, mentions_place
 from .filters.query_parser import find_top_n
 from .llm import gpt_api
 from .llm.schemas import Analysis
 from .llm.usage import timed
 from .pricing import format_price
 from .queries.facts import calculate_facts
-from .queries.period_queries import aggregate_query, declining_regions
-from .queries.price_ranking import argmax_price, argmin_price, price_filter
+from .queries.period_queries import aggregate_query, declining_regions, year_mean
+from .queries.price_ranking import price_filter, rank_prices
 from .queries.year_query import last_year_answer, region_records, resolve_relative_years
 from .regions import canonical_names, named_region, region_catalog
 
@@ -44,17 +45,6 @@ def open_index():
     corpus = load_corpus()
     knowledge = load_knowledge(corpus)
     return corpus, validate_knowledge_index(knowledge)
-
-
-def _source_line(doc):
-    m = doc['metadata']
-    if m.get('kind') in {'monthly', 'timeline'}:
-        period = m.get('month') or f"{m.get('start_month')} ~ {m.get('end_month')}"
-        return (f"[{doc['id']}] {m['source']} · {m['region_path']} · {period} · 원본 {m['source_row']}행 · "
-                f"SHA-256 {m['source_sha256']}")
-    title = doc['text'].splitlines()[0]
-    row = f" · 원본 {m['source_row']}행" if m.get('source_row') else ''
-    return f"[{doc['id']}] 지식 문서 · {title} · {m['source']}{row} · SHA-256 {m['source_sha256']}"
 
 
 def explain(question, analysis, corpus, collection, catalog, display, region_id=None, embedder=None, timings=None,
@@ -74,7 +64,7 @@ def explain(question, analysis, corpus, collection, catalog, display, region_id=
         year = year or month[:4]
     if not month and not year and not ids and MARKET_WORDS.search(question):
         month, year = corpus.months[-1], corpus.months[-1][:4]
-    if year and not any(m.startswith(year) for m in corpus.months):
+    if year and not months_in_year(corpus.months, year):
         year = None
     query = analysis['rewritten_query'] or question
     # 프로필·시장 요약은 지역·기간이 정해지면 조건 검색으로 가져오므로, 의미 검색은 항상 안내 문서로 한정합니다.
@@ -96,7 +86,7 @@ def explain(question, analysis, corpus, collection, catalog, display, region_id=
                 'timings': timings}
     result = generate(question, hits, analysis, display, [], timings)
     return {**result, 'analysis': analysis, 'contexts': hits, 'facts': [],
-            'sources': [_source_line(h) for h in hits], 'route': 'explain', 'timings': timings}
+            'sources': [source_line(h) for h in hits], 'route': 'explain', 'timings': timings}
 
 
 def with_notes(result, notes):
@@ -162,11 +152,9 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     blocked = unavailable(question, corpus.months) if month is None else None
     if blocked:
         return blocked
-    unanswerable = ambiguous_place(question)
-    if unanswerable:
-        place = ambiguous_place_candidates(question)
-        choices = candidate_choices(question, place[0], [label_of(c) for c in place[1]]) if place else []
-        return clarify_answer(unanswerable, 'out_of_scope', choices)
+    place = ambiguous_place(question)
+    if place:
+        return place
     # '제주도 데이터 전부'처럼 값 목록을 원하면 연도 보유 범위 안내 대신 보유 월의 값을 나열합니다 (하위 지역 포함).
     records = region_records(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
     if records is not None:
@@ -191,7 +179,7 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
         years = [c['year'] for c in coverage['analysis']['coverage'] if c['available_months']]
         scope, ambiguous = named_region(question, region_catalog(corpus))
         if len(years) == 1 and scope and not ambiguous:
-            mean = aggregate_query(f"{scope['label']} {years[0]}년 평균 매매가격", corpus, unit or DISPLAY_PRICE_UNIT)
+            mean = year_mean(scope, years[0], corpus, unit or DISPLAY_PRICE_UNIT)
             if mean and mean['analysis']['intent'] == 'period_mean':
                 notice = [p for p in coverage['answer'].split('\n\n') if not p.startswith('조회할 지역을')]
                 return {**mean, 'answer': '\n\n'.join(notice + [mean['answer']]),
@@ -217,7 +205,7 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
         # 보유 연도 안내는 가격 질문에만 붙입니다 ('오늘 점심 메뉴'가 '2026년 자료가 있습니다'로 바뀌지 않도록).
         if PRICE_WORDS.search(question) and re.search('없|미확보|확보되지|제공되지|지원되지',analysis['message']):
             mentioned=explicit_years(question) | explicit_years(analysis['message'])
-            available=[y for y in sorted(mentioned) if any(m.startswith(f'{y}-') for m in corpus.months)]
+            available=[y for y in sorted(mentioned) if months_in_year(corpus.months,y)]
             if available:
                 analysis['message']='원본에 '+', '.join(str(y)+'년' for y in available)+' 월평균 매매가격 자료가 있습니다. 개별 거래 기록은 없습니다. 조회할 지역과 필요한 계산(월별 가격·기간 평균·변동률)을 확인해주세요.'
         return {'answer':analysis['message'] or '지역과 기간을 구체적으로 입력하세요.',
@@ -285,8 +273,8 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
             raise ValueError('순위 조회 범위는 한 지역씩 지정하세요.')
         # '구별 순위·랭킹'은 전체 순위, 'top 10'은 그 개수, 그 외(가장 비싼 곳)는 상위 DEFAULT_TOP_N곳
         top_n=find_top_n(question) or (30 if FULL_RANKING.search(question) else DEFAULT_TOP_N)
-        aggregate=(argmax_price if intent=='argmax' else argmin_price)({
-            'month':target_month,'region_id':ids[0] if ids else None,'level':analysis['level'],'top_n':top_n})
+        aggregate=rank_prices({'month':target_month,'region_id':ids[0] if ids else None,'level':analysis['level'],
+                               'top_n':top_n}, mode='max' if intent=='argmax' else 'min')
         if aggregate.get('error'):
             raise ValueError(aggregate['error'])
         contexts=aggregate['top']
@@ -328,10 +316,10 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
                     resolved_start=start,resolved_end=end,display_unit=display, retrieval=diagnostics)
     contexts=contexts+support
     result=generate(question,contexts,analysis,display,facts,timings)
-    sources=[_source_line(c) for c in contexts]
+    sources=[source_line(c) for c in contexts]
     choices=[]
     if intent=='lookup' and len(ids)==1:
         # 하위 지역이 있으면 '하위 지역 값도 필요하신가요?' 선택지 버튼 (예: 광주 → 동구·서구·남구·북구·광산구)
-        choices,_=subregion_choices(catalog[ids[0]],catalog,f"{target_month[:4]}년 {int(target_month[5:])}월",'기록 전부')
+        choices,_=subregion_choices(catalog[ids[0]],catalog,month_label(target_month),'기록 전부')
     return {**result,'analysis':analysis,'contexts':contexts,'facts':facts,'sources':sources,'route':'numeric',
             'timings':timings,'choices':choices}

@@ -34,6 +34,9 @@ cd C:\BuBot
    python -m venv .venv
    .\.venv\Scripts\python.exe -m pip install -r requirements.txt
    (openai, numpy, pydantic)
+   __pycache__ 폴더가 생기지 않도록 가상환경 전체에 설정 (가상환경을 새로 만들 때마다 한 번):
+   Set-Content .\.venv\Lib\site-packages\bubot_no_pycache.pth 'import sys; sys.dont_write_bytecode = True'
+   (main.py·web_main.py 외의 실행 — python -m, 자동시험, 임시 스크립트 — 에도 적용됩니다)
 
 2) 원본 데이터 넣기
    data/ 폴더는 Git에 올리지 않습니다(.gitignore). 저장소를 새로 받았다면

@@ -1,6 +1,6 @@
 // 사이드바: 진행 중인 대화 메뉴(☰)와 너비 조절. 모든 페이지가 불러옵니다.
 import {request} from '../api.js';
-import {loadChat, clearChat, chatTitle} from './chat-store.js';
+import {loadChat, endChat, chatTitle} from './chat-store.js';
 import {copyToClipboard, transcriptText} from './clipboard.js';
 
 const onChatPage = () => location.pathname.endsWith('/chat.html');
@@ -66,8 +66,7 @@ function setupMenu() {
         say(item, '한 번 더 누르면 대화가 지워져요');
         return;
       }
-      request('api/reset', {session_id: state.sessionId}).catch(() => {});
-      clearChat();
+      endChat(state.sessionId);
       close();
       if (onChatPage()) location.href = './';
     }
