@@ -63,7 +63,8 @@ def locate(question, kwargs):
         place = gpt_api.locate_place(question)
     except Exception:
         return None
-    name = (place.get('place') or '').strip()
+    # 모델이 '연세대 근처'처럼 꼬리말까지 적으면 뗍니다 (안내문이 "'연세대 근처'은(는)"이 되지 않도록)
+    name = re.sub(NEARBY + '$', '', (place.get('place') or '').strip()).strip()
     if PLACE_PRICE.search(name) or len(name) > 30:
         name = ''  # 모델이 장소 대신 질문 전체를 적은 경우
     region = address_region(place.get('address'), catalog) if place.get('found') else None

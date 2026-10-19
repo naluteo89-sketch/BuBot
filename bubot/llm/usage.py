@@ -17,7 +17,7 @@ USAGE_PATH = OUTPUT_DIR / 'api_usage.json'
 DAILY_BUDGET_USD = float(os.getenv('BUBOT_DAILY_BUDGET_USD', '2'))     # 0이면 한도 없음
 MONTHLY_BUDGET_USD = float(os.getenv('BUBOT_MONTHLY_BUDGET_USD', '30'))  # 0이면 한도 없음
 # 1M 토큰당 USD (입력, 캐시된 입력, 출력). 2026-10 기준 공개 단가를 옮긴 값이므로 가격 변경 시 함께 고치세요.
-PRICES = {'gpt-6-luna': (0.10, 0.01, 0.50),
+PRICES = {'gpt-6-luna': (0.10, 0.01, 0.50), 'gpt-6.1-sol': (2.00, 0.10, 10.00),
           'gpt-4o-mini': (0.15, 0.075, 0.60), 'gpt-4o': (2.50, 1.25, 10.00),
           'text-embedding-3-small': (0.02, 0.02, 0.0)}
 _lock = Lock()

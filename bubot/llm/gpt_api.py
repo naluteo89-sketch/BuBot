@@ -19,7 +19,7 @@ REASONING_TOKENS = 4000  # 추론에 쓰도록 출력 한도에 더하는 여유
 # 단계별 고정 키. 같은 키의 요청을 같은 캐시 서버로 보내 고정 프롬프트(질문 분석 약 5,100토큰)가 캐시 적중합니다.
 # 측정(2026-10-12): 키 없음 6회 중 1회 적중 → 키 지정 시 첫 호출 이후 매번 적중.
 PROMPT_CACHE_KEYS = {"analyze": "bubot-analyze", "condense": "bubot-condense", "answer": "bubot-answer"}
-LOCATE_MODEL = "gpt-4o"  # 장소 → 소재지 확인 전용 (locate_place 참고)
+LOCATE_MODEL = "gpt-6-luna"  # 장소 → 소재지 확인 전용 (locate_place 참고)
 API_BASE_URL = "https://api.openai.com/v1"
 API_MIN_INTERVAL = float(os.getenv("BUBOT_API_MIN_INTERVAL", "0.3"))  # 모든 OpenAI 호출 사이 최소 간격(초)
 API_MAX_RETRIES = int(os.getenv("BUBOT_API_MAX_RETRIES", "3"))       # 429·5xx·연결 오류 재시도 (SDK 지수 대기)
@@ -248,6 +248,8 @@ def locate_place(question):
 
     위치 확인만 LOCATE_MODEL을 씁니다. 측정(2026-10-12, 6개 장소): gpt-4o 6/6 정답 1.3초,
     gpt-4o-mini는 김포공항을 경기 김포시로, 웹 검색 도구는 챔피언스 필드를 다른 지역으로 답했습니다.
+    재측정(2026-10-19, 20개 장소, evaluations/locate_models.py): gpt-6-luna(medium) 20/20 2.4초 $0.0025,
+    gpt-4o 17/20 1.1초 $0.0355(연세대·서울대·해운대해수욕장 못 찾음), gpt-6.1-sol(low) 20/20 2.6초 $0.0319.
     주소를 실제 지역으로 바꾸고 검증하는 일은 호출한 쪽(rag_service)이 코드로 합니다.
     """
     from .schemas import Location
