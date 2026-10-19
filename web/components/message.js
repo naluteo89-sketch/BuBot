@@ -61,9 +61,13 @@ function factItem(line) {
 
 // 답변 형식(요약 문단 → '- ' 근거 목록 → 보충 문단)을 위계가 보이는 문서로 바꿉니다.
 // 답변 속 '- ' 목록이 '계산 근거'와 같은 내용이고 짧으면(5줄 이하) 본문에서 뺍니다. 순위처럼 긴 목록은 남깁니다.
+// 첫 문단에 목록의 금액·비율이 모두 나와 있을 때만 뺍니다. '하위 지역까지 모두 보여드립니다'처럼 첫 문단에 값이 없으면
+// 목록을 빼는 순간 본문에 값이 하나도 남지 않습니다.
 const SHORT_LIST = 5;
-const sameAsFacts = (lines, facts) => facts.length > 0 && lines.length <= SHORT_LIST
-  && lines.every(line => facts.includes(line.slice(2).trim()));
+const figuresIn = text => [...text.matchAll(FIGURE)].map(match => match[0]);
+const sameAsFacts = (lines, facts, lead) => facts.length > 0 && lines.length <= SHORT_LIST
+  && lines.every(line => facts.includes(line.slice(2).trim()))
+  && lines.every(line => figuresIn(line).every(figure => lead.includes(figure)));
 
 function richBody(text, facts = [], highlight = []) {
   const body = document.createElement('div');
@@ -72,7 +76,7 @@ function richBody(text, facts = [], highlight = []) {
   paragraphs.forEach((paragraph, index) => {
     const lines = paragraph.split('\n').map(line => line.trim()).filter(Boolean);
     if (lines.length && lines.every(line => line.startsWith('- '))) {
-      if (sameAsFacts(lines, facts)) return;
+      if (sameAsFacts(lines, facts, paragraphs[0])) return;
       const list = document.createElement('ul');
       list.className = 'facts';
       lines.forEach(line => list.append(factItem(line.slice(2))));
