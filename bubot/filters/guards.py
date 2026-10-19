@@ -22,6 +22,18 @@ INDIVIDUAL = re.compile(r'실거래(?!\s*가격\s*지수|가\s*지수)|개별\s*
 COMPLEX = re.compile(r'래미안|자이|힐스테이트|아이파크|푸르지오|[eE이]\s*편한\s*세상|롯데\s*캐슬|더\s*샵|센트레빌|위브|'
                      r'아크로|디에이치|트리마제|헬리오시티|타워\s*팰리스|은마|리센츠|파크리오|엘스|'
                      r'(?<![가-힣])(?![가-힣]*(?:시|구|군|도|동|읍|면|전국|서울|수도권|지방|동네|근처|주변|우리)아파트)[가-힣A-Za-z0-9]{2,}(?:아파트|APT)')
+# 개별 거래·아파트의 최고가/최저가 ('최고가 아파트', '가장 비싸게 팔린'). 답은 queries.year_query.deal_extreme이 하고,
+# expressions.rewrite는 이 질문의 'N년 전'을 월이 아니라 그 해로 바꿉니다. '최고가 지역'·'가장 비싼 구'는 지역 순위 질문입니다.
+DEAL_HIGH = r'최고\s*가|최고\s*가격|최고\s*금액|가장\s*비싸(?:게)?|가장\s*비싼|제일\s*비싸(?:게)?|제일\s*비싼|가장\s*높은\s*가격|비싸게'
+DEAL_LOW = r'최저\s*가|최저\s*가격|최저\s*금액|가장\s*싸(?:게)?|가장\s*싼|제일\s*싸(?:게)?|제일\s*싼|가장\s*저렴(?:한|하게)|가장\s*낮은\s*가격|(?<!비)싸게'
+_DEAL = r'아파트|거래|매물|단지|집|매매\s*건|팔린|팔렸|거래된|계약|낙찰'
+DEAL_EXTREME = re.compile(rf'(?:{DEAL_HIGH}|{DEAL_LOW})\s*(?:로|으로|에)?\s*(?:{_DEAL})|(?:{_DEAL})\S{{0,2}}\s*(?:{DEAL_HIGH}|{DEAL_LOW})')
+REGION_RANKING = re.compile(r'지역|시도|시군구|곳|동네|순위|랭킹|(?:어느|어떤|무슨)\s*(?:구|시|군)|(?<![가-힣])(?:구|시|군)\s*(?:는|은|가|이|를|을)?\s*(?:어디|뭐)')
+
+
+def deal_extreme_question(question):
+    """개별 거래·아파트의 최고가/최저가를 묻는 질문인지 (지역 순위 질문은 제외)."""
+    return bool(DEAL_EXTREME.search(question)) and not REGION_RANKING.search(question)
 
 
 def out_of_scope(question):

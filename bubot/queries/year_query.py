@@ -7,6 +7,7 @@ from ..cache.data_cache import monthly_doc, monthly_docs
 from ..pricing import format_price
 from ..config import CSV_PATH
 from ..dates import full_year, month_label, months_in_year, this_year
+from ..filters.guards import DEAL_HIGH, DEAL_LOW, deal_extreme_question
 from ..filters.period_parser import explicit_years
 
 # 변화·순위를 묻는 '작년' 질문은 이 규칙이 아니라 일반 경로(GPT 분석 → 수치/서술)에서 답합니다.
@@ -106,22 +107,14 @@ def _headline(selected, scope, level, high, low, year, unit):
 # 개별 거래·아파트의 최고가/최저가: 자료는 지역 월평균이라 답할 수 없습니다. 이전에는 GPT 분석이 지역 순위(argmax)로 보고
 # '광주 남구의 최고가 아파트는?'·'최저가 아파트는?'에 남구 월평균 하나를 '1위'로 똑같이 답했습니다 (2026-10-16 testlog).
 # 대신 그 지역 월평균이 가장 높은(낮은) 달을 알려줍니다. '최고가 지역'·'가장 비싼 구'처럼 지역 순위를 묻는 질문은 제외합니다.
-_HIGH = r'최고\s*가|최고\s*가격|최고\s*금액|가장\s*비싸(?:게)?|가장\s*비싼|제일\s*비싸(?:게)?|제일\s*비싼|가장\s*높은\s*가격|비싸게'
-_LOW = r'최저\s*가|최저\s*가격|최저\s*금액|가장\s*싸(?:게)?|가장\s*싼|제일\s*싸(?:게)?|제일\s*싼|가장\s*저렴(?:한|하게)|가장\s*낮은\s*가격|(?<!비)싸게'
-_DEAL = r'아파트|거래|매물|단지|집|매매\s*건|팔린|팔렸|거래된|계약|낙찰'
-DEAL_EXTREME = re.compile(rf'(?:{_HIGH}|{_LOW})\s*(?:로|으로|에)?\s*(?:{_DEAL})|(?:{_DEAL})\S{{0,2}}\s*(?:{_HIGH}|{_LOW})')
-REGION_RANKING = re.compile(r'지역|시도|시군구|곳|동네|순위|랭킹|(?:어느|어떤|무슨)\s*(?:구|시|군)|(?<![가-힣])(?:구|시|군)\s*(?:는|은|가|이|를|을)?\s*(?:어디|뭐)')
-
-
 def deal_extreme(question, corpus, unit):
     """'2025년 강남구 최고가 거래'처럼 개별 거래·아파트의 최고가/최저가를 물으면, 답할 수 없음을 밝히고
     그 지역의 월평균 매매가격이 가장 높은(낮은) 달과 금액으로 대신 답합니다. 연도가 있으면 그 해의 달, 없으면 전체 보유 기간.
-    해당 없으면 None."""
-    found = DEAL_EXTREME.search(question)
-    if not found or REGION_RANKING.search(question):
+    '3년 전 최고가 거래'의 '3년 전'은 expressions.rewrite가 그 해(2023년)로 바꿔 둡니다. 해당 없으면 None."""
+    if not deal_extreme_question(question):
         return None
-    high = bool(re.search(_HIGH, question))
-    low = bool(re.search(_LOW, question))
+    high = bool(re.search(DEAL_HIGH, question))
+    low = bool(re.search(DEAL_LOW, question))
     catalog = region_catalog(corpus)
     scope, ambiguous = named_region(question, catalog)
     if ambiguous:
@@ -157,10 +150,15 @@ def deal_extreme(question, corpus, unit):
         picks = ([('높았던', max(docs, key=lambda d: d.metadata['price_thousand_krw']))] if high or not low else []) + \
                 ([('낮았던', min(docs, key=lambda d: d.metadata['price_thousand_krw']))] if low else [])
         selected = [d for _, d in picks]
-        highlight = [month_label(d.metadata['month']) for d in selected]
-        parts = [f'월평균 매매가격이 가장 {w} 달은 {month_label(d.metadata["month"])}({price(d)})' for w, d in picks]
-        lead = (f'개별 아파트·거래 단위의 {word}는 답해드릴 수 없지만, {period} {name}의 '
-                + ', '.join(parts) + '입니다.')
+        # 연도가 정해지면 '8월'만, 전체 기간이면 '2022년 5월'. 화면은 '가장 높았던 달은 8월'을 강조합니다.
+        when = lambda d: f"{int(d.metadata['month'][5:])}월" if year else month_label(d.metadata['month'])
+        highlight = [f'가장 {w} 달은 {when(d)}' for w, d in picks]
+        if len(picks) == 1:
+            body = f'{highlight[0]}이며, 가격은 {price(selected[0])}입니다.'
+        else:
+            body = ', '.join(f'{h}({price(d)})' for h, d in zip(highlight, selected)) + '입니다.'
+        place = f'{year}년 {name}' if year else f'{period} {name}'
+        lead = f'개별 아파트·거래 단위의 {word}는 답해드릴 수 없지만, {place}에서 월평균 매매가격이 {body}'
     facts = [f"{d.metadata['month']} {d.metadata['region_path']}: {price(d)}" for d in selected]
     note = (f'비교 범위: {name}의 {period} 보유 월 중 값이 있는 {len(docs)}개월. ' if len(docs) > 1 else '') + (
             '값은 개별 거래 가격이 아니라 그 달 지역 아파트의 평균 매매가격이며, 그 달에 이보다 비싸거나 싼 거래가 있었을 수 있습니다.')

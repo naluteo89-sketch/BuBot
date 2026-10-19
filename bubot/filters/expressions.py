@@ -12,6 +12,7 @@ import re
 
 from ..dates import month_label, now_kst, shift
 from ..regions import ALIASES
+from .guards import deal_extreme_question
 
 
 # ── 지역 별칭: 동네·생활권 이름 → 데이터 지역명 (괄호는 동 단위 자료가 없다는 안내) ──
@@ -129,6 +130,14 @@ def rewrite(question, months, today=None):
         if month < first:
             notes.append(f"'{word}' → {month_label(month)}. 자료는 {month_label(first)}부터 있습니다.")
         return month
+
+    # 최고가·최저가 거래 질문의 'N년 전'은 그 해 전체에서 가장 높은(낮은) 달을 찾도록 연도로 바꿉니다 ('3년 전' → 2023년).
+    if deal_extreme_question(text):
+        def year_ago(m):
+            y = shift(latest, -int(m[1]) * 12)[:4]
+            notes.append(f"'{m[0]}' → {y}년 (최신 보유 월 {month_label(latest)}에서 센 연도, 그 해의 달 중에서 찾음)")
+            return f'{y}년'
+        text = re.sub(r'(?<![\d.])(\d{1,2})\s*년\s*(?:전|이전)(?!국|체|세|라|남|북|주|역)', year_ago, text)
 
     def counted(word, month):
         notes.append(f"'{word}' → {month_label(month)} (최신 보유 월 {month_label(latest)}에서 센 시점)")
