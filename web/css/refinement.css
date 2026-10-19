@@ -1,0 +1,223 @@
+/* 화면의 공통 시각 체계. 인쇄 규칙은 styles.css에서 이 파일 뒤에 적용합니다. */
+:root {
+  --bg: #f7f8f4;
+  --ink: #213e34;
+  --muted: #64736a;
+  --accent: #286548;
+  --line: #dfe6dc;
+  --surface-soft: #edf2e9;
+  --shadow-soft: 0 8px 32px #213e3408;
+}
+body { font-size: 16px; line-height: 1.7; }
+main { max-width: 1320px; padding: 0 clamp(28px, 4.5vw, 72px) 28px; }
+#main-content > .intro, #main-content > .composer-wrap, #main-content > .examples,
+#main-content > .data-range { max-width: 880px; }
+header { min-height: 76px; font-size: 13px; gap: 12px; }
+header > span:first-child { padding: 6px 0; background: transparent; color: var(--muted); font-size: 13px; }
+header > span:first-child::before { width: 6px; height: 6px; background: #72916b; }
+.header-link { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.header-link:hover { color: var(--accent); }
+.text-button { min-height: 44px; border-radius: 10px; padding: 9px 14px; font-size: 13px; }
+footer { padding: 28px 0 0; gap: 12px; font-size: 15px; font-weight: 700; }
+footer span { font-size: 12px; font-weight: 400; }
+
+/* Navigation */
+aside { width: var(--sidebar-w, 260px); padding: 32px 22px 24px; background: #193f35; border-right: 0; }
+.brand { font-size: 29px; letter-spacing: -1px; }
+.brand-icon { width: 37px; height: 39px; margin-right: 10px; border-radius: 12px 12px 12px 3px; font-size: 23px; }
+.brand-caption { margin: 12px 0 44px; font-size: 12px; letter-spacing: .3px; }
+.main-nav { gap: 8px; }
+.nav-item { gap: 12px; padding: 13px 14px; border-radius: 12px; font-size: 14px; }
+.nav-item > span { width: 24px; font-size: 22px; }
+.nav-item.active { background: #dce9cc; box-shadow: none; }
+.sub-nav { margin-bottom: 20px; padding-top: 18px; }
+.sub-nav .nav-item { padding: 11px 14px; font-size: 13px; }
+.nav-caption { padding-left: 14px; font-size: 11px; letter-spacing: 1px; }
+.aside-illustration { padding: 30px 0 22px; opacity: .8; }
+.aside-illustration img { width: 118px; }
+.aside-foot { padding-top: 20px; }
+.aside-foot > span { display: block; font-size: 11px; line-height: 1.7; }
+#status { font-size: 12px; margin-bottom: 7px; }
+.api-light { font-size: 12px; }
+.nav-menu-button { width: 44px; height: 44px; }
+
+/* Introduction and discovery */
+.intro { padding: 54px 0 36px; }
+#main-content > .intro { padding: clamp(38px, 7vh, 76px) 0 32px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .7px; }
+h1 { margin: 20px 0 18px; font-size: clamp(36px, 3.4vw, 54px); letter-spacing: -2px; line-height: 1.3; word-break: keep-all; }
+h1 em { color: #56804b; }
+.intro-description { font-size: 16px; line-height: 1.85; word-break: keep-all; }
+.mobile-break { display: none; }
+.examples { margin-top: 30px; }
+.section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 13px; }
+.section-heading h2 { margin: 0; color: var(--ink); font-size: 14px; font-weight: 650; text-align: left; }
+.section-heading > span { color: var(--muted); font-size: 12px; }
+.suggestions { gap: 12px; }
+.suggestions button { padding: 19px 20px 20px; gap: 7px; border-radius: 16px; background: #ffffff80; min-width: 0; }
+.suggestions button:hover:not(:disabled) { background: #fff; border-color: #89a282; box-shadow: var(--shadow-soft); transform: translateY(-3px); }
+.suggestion-number { display: block; width: fit-content; margin-bottom: 7px; color: #66835b; font-size: 11px; letter-spacing: 1px; font-weight: 650; }
+.suggestions strong { font-size: 16px; }
+.suggestion-description { font-size: 13px; line-height: 1.75; word-break: keep-all; }
+.suggestion-arrow { top: 17px; right: 18px; font-size: 18px; }
+.data-range { padding: 23px 0 0; margin-top: 26px; border-top: 1px solid var(--line); gap: 8px 12px; font-size: 12px; }
+.data-range strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.data-range a { padding-left: 12px; font-size: 12px; }
+
+/* Composer */
+.question-form { border: 1px solid #bfcfba; border-radius: 20px; padding: 24px 26px 18px; box-shadow: 0 8px 36px #244f3509; }
+.question-form:focus-within { border-color: #5c8655; box-shadow: 0 0 0 3px #50836316, 0 8px 36px #244f3509; }
+textarea { display: block; min-height: 76px; font-size: 18px; line-height: 1.7; resize: vertical; }
+textarea::placeholder { color: #75816e; }
+.composer-bottom { flex-wrap: wrap; gap: 10px; margin-top: 15px; padding-top: 14px; border-top: 1px solid #edf0e9; }
+select { max-width: 140px; min-height: 44px; font-size: 14px; padding: 9px 12px; border-radius: 9px; background: #f5f7f0; }
+#input-help { font-size: 11px; }
+#count { font-size: 11px; font-variant-numeric: tabular-nums; }
+.composer-bottom button { min-width: 118px; min-height: 44px; padding: 11px 20px; border-radius: 11px; font-size: 15px; background: #275b43; box-shadow: none; }
+.composer-bottom button:disabled { color: #3f5946; background: #dce6d5; }
+.notice { margin-top: 12px; min-height: 22px; font-size: 12px; }
+.composer-toolbar { margin-bottom: 8px; }
+.new-chat { min-height: 40px; font-size: 12px; }
+
+/* Conversation: a quiet reading surface, with emphasis reserved for figures. */
+.chat-log { max-width: 880px; padding-top: 30px; gap: 32px; }
+.chat-log:empty { display: none; }
+.chat-main:has(.chat-log:empty) .chat-dock { position: static; background: none; }
+.chat-turn { gap: 20px; }
+.chat-log .message.user { padding: 13px 19px; border-radius: 18px 18px 5px 18px; background: #e9efdf; border-color: #dce5d1; }
+.chat-log .message.user .message-body { font-size: 15px; }
+.chat-log .message.assistant { padding: 26px 30px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 5px 20px 20px 20px; box-shadow: var(--shadow-soft); }
+.chat-log .message.assistant .message-label { font-size: 12px; color: #527347; margin-bottom: 18px; }
+.chat-log .message.assistant .message-label::before { background: #ecf2e4; color: #315c3c; width: 27px; height: 28px; font-size: 14px; }
+.chat-log .message.assistant .message-body { font-size: 16px; line-height: 1.9; }
+.message-body.rich .lead { font-size: 19px; line-height: 1.8; }
+.chat-log .message.assistant .figure, .chat-log .message.assistant .lead .figure { color: #235737; }
+.chat-log .message.assistant .figure.highlight { color: #78571c; background: #fff4d6; text-decoration: none; border-radius: 3px; }
+.message-body.rich .facts, .message-body.rich .facts li { border-color: #e4eadf; }
+.message-body.rich .fact-label, .message-body.rich .facts li.fact-note { color: var(--muted); font-size: 13px; }
+.message-body.rich .fact-value { font-size: 18px; font-variant-numeric: tabular-nums; }
+.chat-log .message.assistant .message-route, .chat-log .message.assistant .source-note { color: var(--muted); font-size: 12px; }
+.chat-log .message.assistant .answer-details { border-color: var(--line); }
+.chat-log .message.assistant summary { color: #486542; font-size: 13px; }
+.chat-log .message.assistant summary:hover { color: #203e30; }
+.chat-log .message.assistant details li { color: #526149; font-size: 13px; }
+.chat-log .message.assistant summary:focus-visible { outline-color: #6c9f7e; }
+.chat-log .message.assistant.pending { background: #f0f4eb; box-shadow: none; }
+.chat-log .message.assistant.pending .message-body { color: var(--muted); }
+.chat-log .message.assistant .answer-check { margin: 0 0 22px; padding: 16px 18px; background: #fff7e5; border: 1px solid #dfc78c; border-left: 3px solid #b28429; color: #665126; border-radius: 10px; }
+.answer-check strong { color: #75521e; font-size: 14px; }
+.answer-check p { font-size: 13px; }
+.answer-check small { color: #725e35; font-size: 12px; }
+.chat-dock { padding-top: 22px; }
+.chat-dock .composer-wrap { max-width: 880px; }
+.chat-dock .question-form { padding: 17px 22px 13px; }
+.turn-action { min-height: 36px; font-size: 12px; padding: 7px 12px; }
+.chat-empty { gap: 12px; padding: 48px 0; font-size: 14px; }
+.chat-empty strong { font-size: 23px; word-break: keep-all; }
+.empty-mark { display: grid; place-items: center; position: relative; width: 62px; height: 64px; margin-bottom: 12px; background: #e5edda; color: #3d623c; border-radius: 22px 22px 22px 6px; font-size: 32px; font-weight: 800; }
+.empty-mark > span { position: absolute; right: 10px; bottom: 7px; color: #729454; }
+.chat-resume { font-size: 13px; border-radius: 12px; padding: 12px 16px; }
+
+/* Data and history */
+.data-guide { gap: 18px; }
+.guide-card { padding: 28px; border-radius: 16px; box-shadow: var(--shadow-soft); }
+.guide-number { font-size: 11px; margin-bottom: 16px; }
+.guide-card h2 { font-size: 19px; margin-bottom: 15px; }
+.guide-card p { font-size: 15px; line-height: 1.85; }
+.guide-card .guide-period-value { font-size: clamp(21px, 2.2vw, 28px); }
+.guide-card details { margin-top: 18px; padding-top: 15px; }
+.guide-action { padding-top: 36px; }
+.history-card { padding: 24px 28px; border-radius: 16px; box-shadow: var(--shadow-soft); }
+.history-card h2 { font-size: 18px; }
+.history-card pre { font-size: 15px; }
+.primary-link { font-size: 14px; padding: 12px 20px; }
+
+@media (max-height: 760px) and (min-width: 951px) {
+  aside { overflow-y: auto; }
+  .brand-caption { margin-bottom: 24px; }
+  .aside-illustration { display: none; }
+  .sub-nav { margin-top: auto; }
+  #main-content > .intro { padding-top: 34px; padding-bottom: 25px; }
+}
+@media (max-width: 1100px) { #input-help { display: none; } }
+@media (max-width: 950px) {
+  .layout:has(.chat-main) { display: flex; flex-direction: column; min-height: 100dvh; }
+  aside { position: static; width: 100%; height: auto; padding: 19px 24px 15px; gap: 0 10px; }
+  .brand { flex-basis: auto; font-size: 25px; }
+  .brand-icon { width: 32px; height: 34px; font-size: 20px; }
+  .main-nav, .sub-nav { gap: 5px; margin-top: 14px; }
+  .main-nav { flex-basis: auto; }
+  .sub-nav { padding-top: 0; margin-bottom: 0; }
+  .nav-item, .sub-nav .nav-item { min-height: 44px; padding: 10px 12px; font-size: 13px; }
+  .aside-foot { display: block; margin-left: auto; padding: 0; border: 0; order: -1; }
+  .brand { order: -2; }
+  .aside-foot > span, .aside-foot #status { display: none; }
+  .api-light { margin-bottom: 0; gap: 4px; font-size: 11px; }
+  .api-light .lamp { width: 7px; height: 7px; }
+  main { padding: 0 26px 24px; }
+  .chat-main { padding-bottom: 0; min-height: 0; flex: 1; }
+  #main-content > .intro { padding-top: 40px; padding-bottom: 28px; }
+  h1 { font-size: 40px; }
+  header { min-height: 62px; }
+  .nav-menu-button { width: 44px; height: 44px; font-size: 19px; }
+}
+@media (max-width: 675px) {
+  .suggestions { grid-template-columns: 1fr; gap: 9px; }
+  .suggestions button { display: grid; grid-template-columns: 26px 76px minmax(0, 1fr); gap: 10px; padding: 16px; align-items: center; }
+  .suggestion-number { margin: 0; }
+  .suggestions strong { font-size: 14px; }
+  .suggestion-description { padding-right: 16px; font-size: 13px; }
+  .suggestion-arrow { top: 50%; right: 13px; transform: translateY(-50%); }
+  .question-form { padding: 20px; }
+  .chat-log .message.assistant { padding: 22px; }
+  .data-guide { gap: 14px; }
+  .guide-card { padding: 24px; }
+  .turn-action { min-height: 44px; }
+}
+@media (max-width: 480px) {
+  aside { padding: 17px 18px 12px; }
+  main { padding: 0 18px 24px; }
+  .chat-main { padding-bottom: 0; }
+  header { flex-wrap: wrap; gap: 4px 10px; padding-block: 10px; }
+  header > span:first-child, .header-link { font-size: 12px; }
+  .nav-item, .sub-nav .nav-item { font-size: 12px; padding: 10px 8px; }
+  .nav-item, .sub-nav .nav-item { gap: 5px; }
+  .nav-item > span, .sub-nav .nav-item > span { width: 16px; font-size: 16px; }
+  .nav-item > .nav-title.is-question { font-size: 13px; }
+  .api-light-text { max-width: 100px; overflow-wrap: anywhere; }
+  #main-content > .intro { padding: 32px 0 25px; }
+  h1 { font-size: 35px; letter-spacing: -1.5px; margin: 18px 0 16px; }
+  .eyebrow { font-size: 11px; }
+  .intro-description { font-size: 15px; }
+  .mobile-break { display: block; }
+  .question-form { padding: 18px 16px 14px; border-radius: 16px; }
+  textarea, select { font-size: 16px; }
+  textarea { min-height: 82px; }
+  select { max-width: 138px; }
+  .composer-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
+  #count { grid-column: 1 / -1; grid-row: 2; margin: 0; text-align: right; display: none; }
+  .question-form:focus-within #count { display: block; }
+  .composer-bottom button { min-width: 98px; padding: 11px 14px; font-size: 14px; }
+  .notice { font-size: 12px; line-height: 1.7; }
+  .section-heading { flex-wrap: wrap; gap: 3px; }
+  .section-heading h2 { font-size: 14px; }
+  .section-heading > span { font-size: 11px; }
+  .suggestions button { grid-template-columns: 22px minmax(0, 1fr); gap: 4px 10px; }
+  .suggestion-number { grid-row: 1 / 3; }
+  .suggestion-description { grid-column: 2; padding-right: 18px; }
+  .data-range { margin-top: 22px; padding-top: 18px; font-size: 12px; }
+  .data-range strong { font-size: 13px; }
+  footer { font-size: 14px; }
+  footer span { font-size: 11px; }
+  .chat-empty strong { font-size: 20px; }
+  .chat-empty { font-size: 14px; padding: 34px 0; }
+  .chat-log .message.assistant { padding: 20px 18px; }
+  .chat-log .message.assistant .message-body { font-size: 16px; }
+  .message-body.rich .lead { font-size: 18px; }
+  .chat-dock .question-form { padding: 15px 14px 12px; }
+  .chat-dock select { max-width: 138px; }
+  .chat-dock .composer-bottom button { max-width: 150px; white-space: normal; }
+  .chat-dock .notice { display: block; }
+  .guide-card { padding: 22px; }
+  .history-card { padding: 20px; }
+}

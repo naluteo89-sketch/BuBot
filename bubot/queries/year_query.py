@@ -233,7 +233,7 @@ def region_records(question, corpus, unit):
             facts.append(f"{month} {region['label']}: {format_price(price, unit) if price is not None else '결측'}")
             if doc is not None:
                 used.append(doc)
-    span = _month_span(months, corpus.months) if len(months) > 1 else months[0]
+    span = _month_span(months, corpus.months) if len(months) > 1 else month_label(months[0])
     names = '·'.join(short_name(r['label'], scope) for r in regions[1:])
     headline = (f"{region_text(scope, catalog) or short_name(scope['label'], None)}의 {span} 아파트 월평균 매매가격"
                 + (f"을 하위 지역({names})까지 모두 보여드립니다." if names else "을 모두 보여드립니다."))
