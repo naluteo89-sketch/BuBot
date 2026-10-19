@@ -138,7 +138,7 @@ export function message(role, text, data = {}) {
     body.textContent = text;
     card.append(body);
   }
-  if (notice) card.append(notice);
+  if (notice) card.insertBefore(notice, card.querySelector('.message-body'));
   if (data.cached) {
     const note = document.createElement('div');
     note.className = 'message-route';
