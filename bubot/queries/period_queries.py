@@ -2,12 +2,12 @@
 import re
 from decimal import Decimal, ROUND_HALF_UP
 from ..filters.period_parser import explicit_years
-from ..regions import named_region, region_catalog, ranking_regions, scope_regions
+from ..regions import find_regions, named_region, region_catalog, region_text, ranking_regions, scope_regions
 from .year_query import resolve_relative_years
 from ..pricing import format_price
 from ..answers.answer_format import rule_answer
 from ..cache.data_cache import monthly_doc, monthly_docs
-from ..config import CSV_PATH
+from ..config import CSV_PATH, MAX_REGIONS
 from ..dates import months_between, months_in_year, shift
 
 
@@ -34,12 +34,25 @@ def period(question, months, inclusive=False):
     if len(years)==1 and UNTIL_NOW.search(question) and re.search(r'부터|이후|~',question):
         start=max(f'{years[0]}-01',months[0])
         return (start,months[-1]) if start<=months[-1] else None
+    if len(years)==1 and not re.search(r'\d\s*월',question):
+        # '2013년 이전'은 보유 첫 월 ~ 2012-12, '2013년까지'는 ~ 2013-12, '2020년 이후·부터'는 2020-01 ~ 최신 월
+        y=years[0]
+        if re.search(rf'{y}\s*년\s*(?:이전|전(?!국|체|세|라|남|북|주|역))',question):
+            return (months[0],f'{y-1}-12') if f'{y-1}-12'>=months[0] else None
+        if re.search(rf'{y}\s*년\s*까지',question) and not re.search('부터|이후',question):
+            return months[0],min(f'{y}-12',months[-1])
+        if re.search(rf'{y}\s*년\s*(?:이후|부터)',question) and not re.search('까지',question):
+            return max(f'{y}-01',months[0]),months[-1]
     if len(years)==1:
         year=years[0]; ms=[int(v) for v in re.findall(r'(\d{1,2})\s*월',question)]
         start=f'{year}-{min(ms):02}' if ms else f'{year}-01'
         end=f'{year}-{max(ms):02}' if ms else f'{year}-12'
         return start,end
     if len(years)==2 and re.search(r'부터|까지|~',question):
+        # '2021년 8월부터 2026년 8월까지'는 월까지 씁니다 (연도만 보면 2021-01 ~ 2026-12가 됨)
+        dated=re.findall(r'(\d{4})\s*년\s*(\d{1,2})\s*월',question)
+        if len(dated)==2:
+            return f'{dated[0][0]}-{int(dated[0][1]):02}',f'{dated[1][0]}-{int(dated[1][1]):02}'
         return f'{years[0]}-01',f'{years[1]}-12'
     # 평균에서 '3개월 전·10년 전'은 기간이 아니라 한 시점입니다 (rag_service.apply_relative_period가 처리).
     ago=r'(?!\s*(?:전|이전))' if inclusive else ''
@@ -58,7 +71,11 @@ def aggregate_query(question, corpus, unit):
     negative=bool(re.search('하락|음수|마이너스|내린|떨어',question) and re.search('지역|곳|어디',question))
     bounds=period(question,corpus.months,inclusive=not negative)
     # '평균'을 물을 때만 기간 평균입니다. '2020년 1월부터 2023년 12월까지 알려줘'는 평균 하나가 아니라 월별 값(추이)입니다.
-    mean=bool(re.search(r'평균',question) and not re.search('변동|상승|하락|최고|최저|비교|차이|각각|추이|연말|12월 기준',question))
+    # 변화('몇 퍼센트 변했어')·극값('제일 낮았던 달')·가격 조건('5억 이하인 구')·순위는 평균 하나로 답하지 않습니다.
+    # 대화 처리(conversation)가 이 함수를 다른 규칙보다 먼저 부르므로 여기서 걸러야 합니다 (2026-10-19 평가 #10·#15·#16).
+    mean=bool(re.search(r'평균',question) and not re.search(
+        r'변동|상승|하락|최고|최저|비교|차이|각각|추이|연말|12월 기준|변했|변화|퍼센트|%|올랐|내렸|오른|내린|증감|대비|보다|'
+        r'가장|제일|높았|낮았|비싼|싼|비쌌|쌌|이하|이상|미만|초과|넘는|넘은|순위|언제|몇\s*월',question))
     if not bounds or not (negative or mean):return None
     start,end=bounds
     # 단일 월 가격은 기존 정확 조회 경로로 보냅니다.
@@ -101,6 +118,79 @@ def aggregate_query(question, corpus, unit):
     if len(valid)<expected:answer+='일부 월 값이 비어 있어 유효한 월만으로 나눈 평균입니다. '
     answer+='12월 한 달의 값이 아니며, 거래 건수로 가중한 실거래 평균도 아닙니다.'
     return rule_answer(answer,facts,valid,intent='period_mean',resolved_region_ids=[scope['id']],resolved_start=start,resolved_end=end,mean_thousand=str(average),valid_months=len(valid))
+
+
+def _mean_of(corpus, rid, start, end):
+    """지역 하나의 start ~ end 보유 월 단순 평균. (평균 천원 Decimal, 유효 월 문서, 보유 월 목록) — 값이 없으면 평균 None."""
+    present=[m for m in corpus.months if start<=m<=end]
+    valid=[d for d in monthly_docs(corpus,{rid},present) if d.metadata.get('price_thousand_krw') is not None]
+    if not valid:return None,valid,present
+    return sum((Decimal(str(d.metadata['price_thousand_krw'])) for d in valid),Decimal(0))/len(valid),valid,present
+
+
+COMPARE_WORDS = re.compile(r'비교|차이|대비|보다|vs|VS|어디가|어느\s*(?:쪽|곳)이')
+
+
+def mean_comparison(question, corpus, unit):
+    """연평균·기간 평균끼리 비교: 여러 지역의 같은 기간('2024년 평균으로 부산이랑 대구, 울산 비교'),
+    또는 한 지역의 여러 연도('경남 2015년 연평균이랑 2025년 연평균', '작년 서울 평균이랑 올해 평균').
+    이전에는 12월 한 달 값으로 대신하거나 '확인할 수 없다'고 답했습니다 (2026-10-19 평가 #6·#24·#28). 해당 없으면 None."""
+    if '평균' not in question or not COMPARE_WORDS.search(question):
+        return None
+    q=resolve_relative_years(question)
+    if re.search(r'변동|상승률|하락률|추이|흐름|(?<!\d)\d{1,2}\s*월',q):
+        return None  # 변화율·월 단위 비교는 수치 경로
+    catalog=region_catalog(corpus)
+    mentions=[m for m in find_regions(q,catalog) if not m.qualifier]
+    if not mentions or any(len(m.candidates)!=1 for m in mentions):
+        return None  # 지역이 없거나 같은 이름 지역이면 다른 경로가 확인 질문
+    ids=list(dict.fromkeys(m.candidates[0] for m in mentions))[:MAX_REGIONS]
+    years=sorted(explicit_years(q))
+    if years and not re.search(r'부터|까지|~',q):
+        periods=[(f'{y}-01',f'{y}-12') for y in years]
+    else:
+        bounds=period(q,corpus.months,inclusive=True)
+        periods=[bounds] if bounds else []
+    if not ((len(ids)>=2 and len(periods)==1) or (len(ids)==1 and len(periods)>=2)):
+        return None
+    rows,docs,notes=[],[],[]
+    for rid in ids:
+        name=region_text(catalog[rid],catalog) or catalog[rid]['label']
+        for start,end in periods:
+            avg,valid,present=_mean_of(corpus,rid,start,end)
+            one_year=start[:4]==end[:4] and start.endswith('-01') and end.endswith('-12')
+            label=f'{start[:4]}년' if one_year else f'{start} ~ {end}'
+            if not present:
+                notes.append(f'{name} {label} 자료는 원본에 없습니다 (보유 기간 {corpus.months[0]} ~ {corpus.months[-1]}).')
+                continue
+            if avg is None:
+                notes.append(f'{name} {label} 값은 모두 결측입니다.')
+                continue
+            if one_year and len(present)<12:
+                notes.append(f'{start[:4]}년은 {int(present[-1][5:])}월까지 보유한 {len(present)}개월의 평균입니다.')
+            if len(valid)<len(present):
+                notes.append(f'{name} {label}은 결측 {len(present)-len(valid)}개월을 빼고 평균했습니다.')
+            rows.append((name,label,avg,valid))
+            docs.extend(valid)
+    if len(rows)<2:
+        return rule_answer(' '.join(notes) or '비교할 값이 없습니다.',intent='clarify',reason='mean_comparison')
+    price=lambda v:format_price(v.quantize(Decimal('0.001'),rounding=ROUND_HALF_UP),unit)
+    if len(ids)>=2:
+        ranked=sorted(rows,key=lambda r:r[2],reverse=True)
+        lead=(f'{rows[0][1]} 평균 아파트 매매가격은 '+', '.join(f'{n} {price(a)}' for n,_,a,_ in ranked)
+              +f'으로 {ranked[0][0]}이(가) 가장 높습니다.')
+        if len(ranked)==2:
+            diff=ranked[0][2]-ranked[1][2]
+            lead+=f' 차이는 {price(diff)}입니다.'
+    else:
+        first,last=rows[0],rows[-1]
+        diff=last[2]-first[2];rate=(last[2]/first[2]-1)*100
+        lead=(f'{first[0]}의 평균 아파트 매매가격은 '+', '.join(f'{l} {price(a)}' for _,l,a,_ in rows)
+              +f'입니다. {last[1]}은 {first[1]}보다 {price(abs(diff))}({rate:+.2f}%) {"높" if diff>=0 else "낮"}습니다.')
+    facts=[f'{n} {l} 평균: {price(a)} (월평균 {len(v)}개월의 단순 평균)' for n,l,a,v in rows]
+    tail=' '.join(dict.fromkeys(notes))+(' ' if notes else '')+'평균은 월평균 매매가격의 단순 평균이며, 거래 건수로 가중한 실거래 평균이 아닙니다.'
+    return rule_answer(lead+'\n\n'+'\n'.join('- '+f for f in facts)+'\n\n'+tail,facts,docs,intent='mean_comparison',
+                       resolved_region_ids=ids,resolved_start=min(p[0] for p in periods),resolved_end=max(p[1] for p in periods))
 
 
 def _declines(corpus, catalog, ids, start, end, unit):

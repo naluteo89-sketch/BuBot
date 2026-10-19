@@ -8,8 +8,8 @@
 """
 import re
 
-from .answers.answer_format import source_line
-from .answers.choices import subregion_choices
+from .answers.answer_format import clarify_answer, source_line
+from .answers.choices import candidate_choices, subregion_choices
 from .answers.generation import generate
 from .cache.data_cache import documents_by_id, load_corpus, load_knowledge
 from .config import (DEFAULT_TOP_N, DISPLAY_PRICE_UNIT, DISPLAY_PRICE_UNITS, KNOWLEDGE_FALLBACK_K,
@@ -28,10 +28,10 @@ from .llm.schemas import Analysis
 from .llm.usage import timed
 from .pricing import format_price
 from .queries.facts import calculate_facts
-from .queries.period_queries import aggregate_query, declining_regions, year_mean
+from .queries.period_queries import aggregate_query, declining_regions, mean_comparison, year_mean
 from .queries.price_ranking import price_filter, rank_prices
-from .queries.year_query import deal_extreme, last_year_answer, region_records, resolve_relative_years
-from .regions import canonical_names, named_region, region_catalog
+from .queries.year_query import deal_extreme, extreme_month, last_year_answer, region_records, resolve_relative_years
+from .regions import canonical_names, find_regions, named_region, region_catalog, region_text
 
 
 MARKET_WORDS = re.compile(r'시장|전국|요즘|최근|현재|지금|순위|top|TOP|Top|많이|오른|내린|상승|하락|흐름|동향')
@@ -159,6 +159,10 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     deal = deal_extreme(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
     if deal is not None:
         return deal
+    # '작년 전국 평균가가 제일 낮았던 달이 언제야', '강남구 역대 최고가 시점': 지역 하나의 월평균 극값 달
+    peak = extreme_month(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
+    if peak is not None:
+        return peak
     # '제주도 데이터 전부'처럼 값 목록을 원하면 연도 보유 범위 안내 대신 보유 월의 값을 나열합니다 (하위 지역 포함).
     records = region_records(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
     if records is not None:
@@ -166,6 +170,9 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     filtered = price_filter(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
     if filtered is not None:
         return filtered
+    compared = mean_comparison(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
+    if compared is not None:
+        return compared
     aggregate = aggregate_query(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
     if aggregate is not None:
         return aggregate
@@ -206,6 +213,14 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     if analysis['intent']=='clarify':
         analysis.update(clarify_fallback(question,catalog,corpus.months))
     if analysis['intent']=='clarify':
+        # 같은 이름 지역('중구')은 모델이 쓴 후보 대신 지역 목록의 실제 후보로 되묻습니다.
+        # 모델 안내문에 '광주 동구(옛 명칭 중구)' 같은 없는 후보가 섞였습니다 (2026-10-19 평가 #33).
+        same=[m for m in find_regions(question,catalog) if not m.qualifier and len(m.candidates)>1]
+        if same:
+            labels=[catalog[c]['label'] for c in same[0].candidates]
+            names=[region_text(catalog[c],catalog) or catalog[c]['label'] for c in same[0].candidates]
+            return clarify_answer(f"'{same[0].text}'은(는) 여러 지역에 있습니다. 어느 지역인지 골라 주세요: {', '.join(names)}.",
+                                  'ambiguous_region',candidate_choices(question,same[0].text,labels))
         # 보유 연도 안내는 가격 질문에만 붙입니다 ('오늘 점심 메뉴'가 '2026년 자료가 있습니다'로 바뀌지 않도록).
         if PRICE_WORDS.search(question) and re.search('없|미확보|확보되지|제공되지|지원되지',analysis['message']):
             mentioned=explicit_years(question) | explicit_years(analysis['message'])

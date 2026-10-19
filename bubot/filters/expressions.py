@@ -28,7 +28,8 @@ REGION_SLANG = [
     (r'판교', '성남시 분당구', '판교'),
     (r'송도', '인천 연수구', '송도'),
     (r'목동', '양천구', '목동'),
-    (r'잠실', '송파구', '잠실'),
+    # '잠실야구장·잠실종합운동장'은 장소 이름이라 places.locate가 소재지를 확인합니다 ('송파구야구장'이 되지 않도록).
+    (r'잠실(?!\s*(?:야구장|종합\s*운동장|운동장|주경기장|경기장|체육관|실내\s*체육관))', '송파구', '잠실'),
     (r'반포|서초동', '서초구', None),
     (r'압구정|대치동|개포동', '강남구', None),
     (r'여의도', '영등포구', '여의도'),
@@ -38,7 +39,8 @@ REGION_SLANG = [
 ]
 # 여러 시군구에 걸친 생활권: 임의로 고르지 않고 후보를 안내합니다.
 AMBIGUOUS_PLACES = {'광교': '수원시 영통구, 용인시 수지구', '위례': '서울 송파구, 성남시 수정구, 하남시',
-                    '검단': '인천 서구', '미사': '하남시', '다산': '남양주시'}
+                    '검단': '인천 검단구',  # 2026-07 인천 행정개편: 서구 검단 지역 → 검단구
+                    '미사': '하남시', '다산': '남양주시'}
 # 사건 기준 시점 (근거: 국내 첫 확진 2020-01 → 그 직전 달)
 EVENTS = [(r'코로나\s*(?:전|이전|직전)', '2019-12', '코로나19 이전을 2019년 12월로 보았습니다.')]
 
@@ -101,8 +103,8 @@ def rewrite(question, months, today=None):
             if place:
                 notes.append(f"동 단위 자료가 없어 '{place}' 대신 {target} 전체 값입니다.")
     for place, target in AMBIGUOUS_PLACES.items():
-        if place in text and ',' not in target:
-            text = text.replace(place, target)
+        if re.search(place + '(?![구시])', text) and ',' not in target:  # '검단구'는 이미 지역명
+            text = re.sub(place + '(?![구시])', target, text)
             notes.append(f"동 단위 자료가 없어 '{place}' 대신 {target} 전체 값입니다.")
 
     if AREA.search(text):

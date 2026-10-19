@@ -5,6 +5,7 @@ import re
 
 from ..answers.answer_format import contexts_of, rule_answer
 from ..cache.data_cache import load_corpus, monthly_docs
+from ..dates import year_point
 from ..filters.period_parser import parse_period
 from ..filters.query_parser import find_level, find_threshold
 from ..pricing import format_price
@@ -26,6 +27,13 @@ def price_filter(question, corpus, unit):
         return rule_answer('같은 이름의 지역이 있습니다. 시도와 시군구를 함께 지정해주세요.', intent='clarify')
     period = parse_period(question, corpus.months)
     month = period.month if period.kind == 'point' and period.month in corpus.months else corpus.months[-1]
+    year_note = ''
+    if period.kind == 'year':
+        # '2024년 기준 5억 이하 서울 구': 최신 월이 아니라 그 해의 마지막 보유 월 (수치 경로의 연도 처리와 같음)
+        last = year_point(period.start[:4], corpus.months)
+        if last:
+            month = last
+            year_note = f' 연도만 지정되어 {period.start[:4]}년의 마지막 보유 월({last}) 값으로 비교했습니다.'
     level = find_level(question) or ('시도' if re.search(r'시도|광역', question) else '시군구')
     docs = [d for d in monthly_docs(corpus, scope_regions(catalog, scope, level), (month,))
             if d.metadata.get('price_thousand_krw') is not None]
@@ -33,7 +41,7 @@ def price_filter(question, corpus, unit):
     hits = sorted((d for d in docs if test(d.metadata['price_thousand_krw'])), key=lambda d: d.metadata['price_thousand_krw'])
     where = scope['label'] if scope else '전국'
     head = (f"{month} 기준 {where} {level} 중 아파트 월평균 매매가격이 {format_price(value, unit)} {OP_WORDS[op]}인 곳은 "
-            f"{len(hits)}곳입니다 (결측 제외 {len(docs)}곳 중).")
+            f"{len(hits)}곳입니다 (결측 제외 {len(docs)}곳 중).{year_note}")
     facts = [f"{d.metadata['region_path']}: {format_price(d.metadata['price_thousand_krw'], unit)}" for d in hits[:LIST_LIMIT]]
     if len(hits) > LIST_LIMIT:
         facts.append(f"외 {len(hits) - LIST_LIMIT}곳 (가격 낮은 순 {LIST_LIMIT}곳만 표시)")

@@ -7,7 +7,7 @@ from ..cache.data_cache import monthly_doc, monthly_docs
 from ..pricing import format_price
 from ..config import CSV_PATH
 from ..dates import full_year, month_label, months_in_year, this_year
-from ..filters.guards import DEAL_HIGH, DEAL_LOW, deal_extreme_question
+from ..filters.guards import DEAL_HIGH, DEAL_LOW, REGION_RANKING, deal_extreme_question
 from ..filters.period_parser import explicit_years
 
 # 변화·순위를 묻는 '작년' 질문은 이 규칙이 아니라 일반 경로(GPT 분석 → 수치/서술)에서 답합니다.
@@ -113,8 +113,28 @@ def deal_extreme(question, corpus, unit):
     '3년 전 최고가 거래'의 '3년 전'은 expressions.rewrite가 그 해(2023년)로 바꿔 둡니다. 해당 없으면 None."""
     if not deal_extreme_question(question):
         return None
-    high = bool(re.search(DEAL_HIGH, question))
-    low = bool(re.search(DEAL_LOW, question))
+    return _extreme_month(question, corpus, unit, bool(re.search(DEAL_HIGH, question)),
+                          bool(re.search(DEAL_LOW, question)), deal=True)
+
+
+# '작년 전국 평균가가 제일 낮았던 달이 언제야', '강남구 역대 최고가 시점': 지역 하나의 월평균이 가장 높은(낮은) 달.
+# 이전에는 기간 평균 규칙이 '평균'만 보고 연평균을 답했습니다 (2026-10-19 평가 #16).
+MONTH_HIGH = r'최고|가장\s*(?:높|비싸|비쌌)|제일\s*(?:높|비싸|비쌌)'
+MONTH_LOW = r'최저|가장\s*(?:낮|싸|쌌|저렴)|제일\s*(?:낮|싸|쌌|저렴)'
+WHEN = re.compile(r'(?:달|월|시점|시기|때)(?:이|은|는|을|가)?\s*(?:언제|어디|몇|뭐|무엇)|언제|어느\s*(?:달|월)|몇\s*월|시점')
+
+
+def extreme_month(question, corpus, unit):
+    """지역 하나의 월평균이 가장 높았던(낮았던) 달을 묻는 질문에 답합니다. 해당 없으면 None."""
+    high, low = bool(re.search(MONTH_HIGH, question)), bool(re.search(MONTH_LOW, question))
+    if not WHEN.search(question) or not (high or low) or REGION_RANKING.search(question):
+        return None
+    return _extreme_month(question, corpus, unit, high, low, deal=False)
+
+
+def _extreme_month(question, corpus, unit, high, low, deal):
+    """그 지역(없으면 전국)의 월평균이 가장 높은(낮은) 달. 연도가 있으면 그 해, 없으면 전체 보유 기간에서 찾습니다.
+    deal=True면 개별 거래 최고가/최저가는 답할 수 없다는 안내로 시작합니다."""
     catalog = region_catalog(corpus)
     scope, ambiguous = named_region(question, catalog)
     if ambiguous:
@@ -131,21 +151,22 @@ def deal_extreme(question, corpus, unit):
     name = region_text(scope, catalog) or short_name(scope['label'], None)
     word = '최고가' if high and not low else '최저가' if low and not high else '최고가·최저가'
     refuse = (f'개별 아파트·거래 단위의 {word}는 자료에 없어 답해드릴 수 없습니다. '
-              '이 서비스의 자료는 지역별 아파트 월평균 매매가격이며, 단지나 개별 거래 금액은 없습니다.')
+              '이 서비스의 자료는 지역별 아파트 월평균 매매가격이며, 단지나 개별 거래 금액은 없습니다.\n\n') if deal else ''
+    prefix = f'개별 아파트·거래 단위의 {word}는 답해드릴 수 없지만, ' if deal else ''
+    reason = 'deal_extreme' if deal else 'extreme_month'
     if not months:
         span = f'{year}년' if year else '요청 기간'
-        return rule_answer(refuse + f'\n\n{span} 자료는 원본에 없습니다. 보유 기간: {corpus.months[0]} ~ {corpus.months[-1]}',
-                           intent='clarify', reason='deal_extreme')
+        return rule_answer(refuse + f'{span} 자료는 원본에 없습니다. 보유 기간: {corpus.months[0]} ~ {corpus.months[-1]}',
+                           intent='clarify', reason=reason)
     docs = [d for d in monthly_docs(corpus, {scope['id']}, months) if d.metadata.get('price_thousand_krw') is not None]
     if not docs:
-        return rule_answer(refuse + f'\n\n{name}의 해당 기간 월평균 매매가격은 결측입니다.', intent='clarify', reason='deal_extreme')
+        return rule_answer(refuse + f'{name}의 해당 기간 월평균 매매가격은 결측입니다.', intent='clarify', reason=reason)
     period = (month_label(requested[0]) if len(requested) == 1 else f'{year}년') if year else f'전체 보유 기간({months[0]} ~ {months[-1]})'
     price = lambda d: format_price(d.metadata['price_thousand_krw'], unit)
     if len(docs) == 1:
         doc = docs[0]
         selected, highlight = [doc], [month_label(doc.metadata['month'])]
-        lead = (f'개별 아파트·거래 단위의 {word}는 답해드릴 수 없지만, {name}의 {month_label(doc.metadata["month"])} '
-                f'아파트 월평균 매매가격은 {price(doc)}입니다.')
+        lead = f'{prefix}{name}의 {month_label(doc.metadata["month"])} 아파트 월평균 매매가격은 {price(doc)}입니다.'
     else:
         picks = ([('높았던', max(docs, key=lambda d: d.metadata['price_thousand_krw']))] if high or not low else []) + \
                 ([('낮았던', min(docs, key=lambda d: d.metadata['price_thousand_krw']))] if low else [])
@@ -158,14 +179,15 @@ def deal_extreme(question, corpus, unit):
         else:
             body = ', '.join(f'{h}({price(d)})' for h, d in zip(highlight, selected)) + '입니다.'
         place = f'{year}년 {name}' if year else f'{period} {name}'
-        lead = f'개별 아파트·거래 단위의 {word}는 답해드릴 수 없지만, {place}에서 월평균 매매가격이 {body}'
+        lead = f'{prefix}{place}에서 월평균 매매가격이 {body}'
     facts = [f"{d.metadata['month']} {d.metadata['region_path']}: {price(d)}" for d in selected]
-    note = (f'비교 범위: {name}의 {period} 보유 월 중 값이 있는 {len(docs)}개월. ' if len(docs) > 1 else '') + (
-            '값은 개별 거래 가격이 아니라 그 달 지역 아파트의 평균 매매가격이며, 그 달에 이보다 비싸거나 싼 거래가 있었을 수 있습니다.')
+    note = f'비교 범위: {name}의 {period} 보유 월 중 값이 있는 {len(docs)}개월. ' if len(docs) > 1 else ''
+    note += ('값은 개별 거래 가격이 아니라 그 달 지역 아파트의 평균 매매가격이며, 그 달에 이보다 비싸거나 싼 거래가 있었을 수 있습니다.'
+             if deal else '값은 지역별 아파트 월평균 매매가격입니다.')
     if year and len(months_in_year(corpus.months, year)) < 12 and not requested:
         note += f' {year}년은 원본에 {len(months_in_year(corpus.months, year))}개월만 있습니다.'
     result = rule_answer(lead + '\n\n' + '\n'.join('- ' + f for f in facts) + '\n\n' + note,
-                         facts, selected, intent='deal_extreme', price_extreme=True,
+                         facts, selected, intent=reason, price_extreme=True,
                          resolved_region_ids=[scope['id']], resolved_start=months[0], resolved_end=months[-1])
     result['highlight'] = highlight
     return result

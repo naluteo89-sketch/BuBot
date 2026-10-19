@@ -11,6 +11,9 @@ from ..regions import address_region, canonical_names, find_regions, region_cata
 from .expressions import AMBIGUOUS_PLACES
 
 PLACE_PRICE = re.compile(r'집값|시세|가격|매매|아파트|얼마|올랐|내렸|변동|추이|평균|비싸|싸')
+# 2026-07 인천 행정개편: 개편 전 주소 → 지금 자료의 구. 위치 확인 모델(gpt-4o)이 개편 전 지식으로 답할 때 씁니다.
+REORGANIZED = {'인천광역시 중구': ['인천광역시 영종구', '인천광역시 제물포구'], '인천광역시 동구': ['인천광역시 제물포구'],
+               '인천광역시 서구': ['인천광역시 서해구', '인천광역시 검단구']}
 NEARBY = r'\s*(?:근처|주변|인근|부근|근방|일대|쪽|앞|옆|동네|일원)?(?:의|에|에서)?'
 # 행정구역 이름이 없는 질문에서 장소를 가리키는 표현. 있으면 질문 분석 전에 소재지를 확인합니다.
 PLACE_WORDS = re.compile(r'근처|주변|인근|부근|근방|일대|일원|공항|(?<![지구영전권무])역(?:\b|(?=\s|$|앞|근처|주변|인근))|야구장|축구장|경기장|구장|'
@@ -64,6 +67,11 @@ def locate(question, kwargs):
     if PLACE_PRICE.search(name) or len(name) > 30:
         name = ''  # 모델이 장소 대신 질문 전체를 적은 경우
     region = address_region(place.get('address'), catalog) if place.get('found') else None
+    if place.get('found') and region is None and place.get('address') in REORGANIZED:
+        # 모델이 개편 전 주소를 답한 경우: 새 구가 하나면 그 구, 여럿이면 후보로 되묻습니다.
+        new = REORGANIZED[place['address']]
+        region = address_region(new[0], catalog) if len(new) == 1 else None
+        place = {**place, 'address': new[0] if len(new) == 1 else place['address'], 'candidates': new}
     text = region and region_text(region, catalog)
     if name and text:
         rewritten = (re.sub(re.escape(name) + NEARBY, text + ' ', question, count=1) if name in question

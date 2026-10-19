@@ -21,7 +21,8 @@ OTHER_HOUSING = re.compile(r'오피스텔|빌라|연립|다세대|단독\s*주�
 INDIVIDUAL = re.compile(r'실거래(?!\s*가격\s*지수|가\s*지수)|개별\s*거래|거래\s*내역|호가|평형|\d+\s*동\s*\d+\s*호|단지')
 COMPLEX = re.compile(r'래미안|자이|힐스테이트|아이파크|푸르지오|[eE이]\s*편한\s*세상|롯데\s*캐슬|더\s*샵|센트레빌|위브|'
                      r'아크로|디에이치|트리마제|헬리오시티|타워\s*팰리스|은마|리센츠|파크리오|엘스|'
-                     r'(?<![가-힣])(?![가-힣]*(?:시|구|군|도|동|읍|면|전국|서울|수도권|지방|동네|근처|주변|우리)아파트)[가-힣A-Za-z0-9]{2,}(?:아파트|APT)')
+                     # '부산동구작년12월아파트'처럼 띄어쓰지 않은 지역·날짜 + 아파트는 단지 이름이 아닙니다.
+                     r'(?<![가-힣])(?![가-힣A-Za-z0-9]*(?:시|구|군|도|동|읍|면|월|년|전국|서울|수도권|지방|동네|근처|주변|우리)아파트)[가-힣A-Za-z0-9]{2,}(?:아파트|APT)')
 # 개별 거래·아파트의 최고가/최저가 ('최고가 아파트', '가장 비싸게 팔린'). 답은 queries.year_query.deal_extreme이 하고,
 # expressions.rewrite는 이 질문의 'N년 전'을 월이 아니라 그 해로 바꿉니다. '최고가 지역'·'가장 비싼 구'는 지역 순위 질문입니다.
 DEAL_HIGH = r'최고\s*가|최고\s*가격|최고\s*금액|가장\s*비싸(?:게)?|가장\s*비싼|제일\s*비싸(?:게)?|제일\s*비싼|가장\s*높은\s*가격|비싸게'
@@ -41,6 +42,9 @@ def out_of_scope(question):
     if RENT.search(question):
         return ('이 서비스의 자료는 지역별 아파트 월평균 매매가격뿐이라 전세·월세 가격은 답할 수 없습니다. '
                 "매매가격은 '서울 아파트 가격'처럼 물어보세요.")
+    if VOLUME.search(question) and OTHER_HOUSING.search(question):
+        return ('거래량·거래 건수·매물 자료와 오피스텔·빌라(연립·다세대)·단독주택·상가·토지 가격은 없습니다. '
+                "이 서비스는 지역별 아파트 월평균 매매가격만 제공합니다. 예: '서울 최근 1년 변동률'.")
     if VOLUME.search(question):
         return ('거래량·거래 건수·매물 자료는 없습니다. 이 서비스는 지역별 아파트 월평균 매매가격만 제공합니다. '
                 "가격 변화는 '서울 최근 1년 변동률'처럼 물어보세요.")
@@ -67,6 +71,12 @@ def unavailable(question, months):
     text = out_of_scope(question)
     if text:
         return clarify_answer(text, 'out_of_scope')
+    # '2012년 이전 자료도 조회돼?': 보유 첫 해와 그 이전은 자료가 없습니다 (모델 답이 매번 달랐음, 2026-10-19 평가 #38)
+    before = re.search(r'(\d{4})\s*년\s*(?:이전|전(?!국|체|세|라|남|북|주|역)|보다\s*(?:앞|전))', question)
+    if before and int(before[1]) <= int(months[0][:4]):
+        return clarify_answer(f'보유 자료는 {month_label(months[0])}부터 {month_label(months[-1])}까지입니다. '
+                              f'{before[1]}년 이전({month_label(months[0])} 이전) 자료는 없습니다. '
+                              f"가장 오래된 값은 '서울 {month_label(months[0])} 가격'처럼 물어보세요.", 'before_data')
     written = parse_period(question, months)
     if written.beyond:
         text = (f'{month_label(written.beyond)}({written.beyond}) 자료는 없습니다. 보유 기간은 {months[0]} ~ {months[-1]}이며, '
