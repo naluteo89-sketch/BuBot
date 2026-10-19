@@ -74,7 +74,7 @@ def answer(payload):
                 (("answer", ""), ("facts", []), ("sources", []),
                  ("standalone_question", ""), ("followup", False), ("input_converted", False),
                  ("memory_turns", 0), ("memory_used", 0), ("timings", {}), ("cached", False),
-                 ("choices", []))}
+                 ("choices", []), ("highlight", []))}
     response["route"] = route_of(result)
     # 화면 표기 정리: 금액 단위를 한 가지로 맞추고, 답변마다 같은 형식의 한 줄 출처를 붙입니다.
     display = (result.get("analysis") or {}).get("display_unit") or unit or DISPLAY_PRICE_UNIT

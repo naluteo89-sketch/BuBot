@@ -64,6 +64,8 @@
 .message-body.rich .lead { font-size: 21.25px; line-height: 1.8; letter-spacing: -.2px; }
 .chat-log .message.assistant .figure { color: #ffffff; font-weight: 700; }
 .chat-log .message.assistant .lead .figure { color: #d9f0c8; }
+/* 서버가 강조한 문구 (최고가·최저가 질문의 해당 월) */
+.chat-log .message.assistant .figure.highlight { color: #f3e3a8; text-decoration: underline; text-underline-offset: 3px; }
 .message-body.rich .facts { list-style: none; margin: 5px 0 22.5px; padding: 0; border-top: 1px solid #3a675d; }
 .message-body.rich .facts li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 5px 20px; padding: 13.75px 0; border-bottom: 1px solid #3a675d; }
 .message-body.rich .fact-label { color: #a9c4b8; font-size: 15px; line-height: 1.6; }

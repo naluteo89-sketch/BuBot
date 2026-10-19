@@ -16,12 +16,17 @@ function section(title, items) {
 const FIGURE = /([+-]?\d[\d,]*억(?:\s?\d[\d,]*만)?(?:\s?\d[\d,]*)?원|[+-]?\d[\d,]*만(?:\s?\d[\d,]*)?원|[+-]?\d[\d,]*천원|[+-]?\d+(?:\.\d+)?%|\d+(?:\.\d+)?배)/g;
 const WARNING_MARK = '[수치 확인 필요]';
 
-function emphasize(parent, text) {
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// highlight: 서버가 강조하라고 준 문구(최고가 질문의 '2025년 8월' 등). 금액과 함께 굵게 표시합니다.
+function emphasize(parent, text, highlight = []) {
+  const words = highlight.filter(Boolean).map(escapeRegExp);
+  const pattern = words.length ? new RegExp(`${words.join('|')}|${FIGURE.source}`, 'g') : FIGURE;
   let last = 0;
-  for (const match of text.matchAll(FIGURE)) {
+  for (const match of text.matchAll(pattern)) {
     if (match.index > last) parent.append(text.slice(last, match.index));
     const strong = document.createElement('strong');
-    strong.className = 'figure';
+    strong.className = highlight.includes(match[0]) ? 'figure highlight' : 'figure';
     strong.textContent = match[0];
     parent.append(strong);
     last = match.index + match[0].length;
@@ -60,7 +65,7 @@ const SHORT_LIST = 5;
 const sameAsFacts = (lines, facts) => facts.length > 0 && lines.length <= SHORT_LIST
   && lines.every(line => facts.includes(line.slice(2).trim()));
 
-function richBody(text, facts = []) {
+function richBody(text, facts = [], highlight = []) {
   const body = document.createElement('div');
   body.className = 'message-body rich';
   const paragraphs = text.trim().split(/\n\s*\n/).filter(Boolean);
@@ -78,7 +83,7 @@ function richBody(text, facts = []) {
     if (index === 0) p.className = 'lead';
     lines.forEach((line, i) => {
       if (i) p.append(document.createElement('br'));
-      emphasize(p, line);
+      emphasize(p, line, highlight);
     });
     body.append(p);
   });
@@ -122,7 +127,7 @@ export function message(role, text, data = {}) {
     const at = text.indexOf(WARNING_MARK);
     const main = at >= 0 ? text.slice(0, at) : text;
     if (at >= 0) notice = checkNotice(text.slice(at));
-    card.append(richBody(main, (data.facts || []).map(fact => String(fact).trim())));
+    card.append(richBody(main, (data.facts || []).map(fact => String(fact).trim()), data.highlight || []));
   } else {
     const body = document.createElement('div');
     body.className = 'message-body';

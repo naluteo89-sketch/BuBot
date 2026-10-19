@@ -67,7 +67,8 @@ def _period_tokens(text, today, latest):
             add(_token('range', shift(latest, -span), latest, m.span(), recent=True))
     for m in re.finditer(r'(?:작년|지난\s*해|전년)\s*(?:같은\s*달\s*|동월\s*|이맘때\s*)?(?:대비|보다|와\s*비교|과\s*비교|이랑\s*비교)', text):
         add(_token('range', shift(latest, -12), latest, m.span(), recent=True))
-    for m in re.finditer(r'(?<![\d.])(\d+)\s*(년|개월|달)\s*(?:전|이전)', text):
+    # 네 자리 연도('2024년 전국')와 '전'으로 시작하는 낱말(전국·전체·전세 등)은 'N년 전'이 아닙니다 (expressions.rewrite와 같은 조건).
+    for m in re.finditer(r'(?<![\d.])(\d{1,2})\s*(년|개월|달)\s*(?:전|이전)(?!국|체|세|라|남|북|주|역)', text):
         n, unit = int(m[1]), m[2]
         month = shift(this_month, -(n * 12 if unit == '년' else n))
         add(_token('point', month, month, m.span(), relative=True))

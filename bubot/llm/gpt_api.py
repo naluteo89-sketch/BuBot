@@ -12,7 +12,10 @@ KEY_FILE = Path(os.getenv("BUBOT_KEY_FILE", r"C:\keydata\gpt_key.py"))
 KEY_ATTRIBUTE = "open_Aikey"
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 1536
-CHAT_MODEL = "gpt-4o-mini"
+CHAT_MODEL = "gpt-6-luna"  # 2026-10-19 gpt-4o-mini → gpt-6-luna (지능 지수 7 → 30, 단가는 더 낮음)
+# 추론 강도 (none·low·medium·high). 추론 모델은 temperature를 받지 않고, 추론 토큰도 max_output_tokens에 포함됩니다.
+REASONING_EFFORT = os.getenv("BUBOT_REASONING_EFFORT", "medium")
+REASONING_TOKENS = 4000  # 추론에 쓰도록 출력 한도에 더하는 여유분 (실제 쓴 만큼만 과금)
 # 단계별 고정 키. 같은 키의 요청을 같은 캐시 서버로 보내 고정 프롬프트(질문 분석 약 5,100토큰)가 캐시 적중합니다.
 # 측정(2026-10-12): 키 없음 6회 중 1회 적중 → 키 지정 시 첫 호출 이후 매번 적중.
 PROMPT_CACHE_KEYS = {"analyze": "bubot-analyze", "condense": "bubot-condense", "answer": "bubot-answer"}
@@ -45,7 +48,7 @@ def check_configuration():
     key, source = resolve_api_key()
     return {"설정 파일": str(Path(__file__).resolve()), "키 인식": bool(key),
             "키 출처": source, "임베딩 모델": EMBEDDING_MODEL,
-            "채팅 모델": CHAT_MODEL, "API 호출": False}
+            "채팅 모델": CHAT_MODEL, "추론 강도": REASONING_EFFORT, "API 호출": False}
 
 
 def create_client(timeout=30.0, max_retries=API_MAX_RETRIES):
@@ -129,13 +132,20 @@ def _metered(method, **kwargs):
     return response
 
 
+def _sampling(model, max_tokens):
+    """모델별 생성 옵션: 추론 모델(gpt-6 계열)은 추론 강도와 추론 여유분, 그 외(gpt-4o 계열)는 temperature=0."""
+    if model.startswith("gpt-6"):
+        return {"reasoning": {"effort": REASONING_EFFORT}, "max_output_tokens": max_tokens + REASONING_TOKENS}
+    return {"temperature": 0, "max_output_tokens": max_tokens}
+
+
 def _parse(model, instruction, payload, schema, max_tokens, cache_key=None):
     """구조화 출력 호출 1건 (질문 분석·장소 확인·질문 재구성 공통). 완료되지 않으면 None, 완료되면 schema로 검증한 dict."""
     options = {"prompt_cache_key": PROMPT_CACHE_KEYS[cache_key]} if cache_key else {}
-    response = _metered(shared_client().responses.parse, model=model, store=False, temperature=0, **options,
+    response = _metered(shared_client().responses.parse, model=model, store=False, **options,
         input=[{"role": "system", "content": instruction},
                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
-        text_format=schema, max_output_tokens=max_tokens)
+        text_format=schema, **_sampling(model, max_tokens))
     if response.status != 'completed' or response.output_parsed is None:
         return None
     return schema.model_validate(response.output_parsed.model_dump()).model_dump()
@@ -333,11 +343,11 @@ today는 실제 오늘 날짜입니다. 당신의 학습 시점을 현재로 가
                "contexts":context, "verified_facts":facts or []}
     if correction:
         payload["correction"] = list(correction)
-    response = _metered(shared_client().responses.create, model=CHAT_MODEL, store=False, temperature=0,
+    response = _metered(shared_client().responses.create, model=CHAT_MODEL, store=False,
         prompt_cache_key=PROMPT_CACHE_KEYS["answer"],
         input=[{"role":"system","content":prompt},
                {"role":"user","content":json.dumps(payload,ensure_ascii=False)}],
-        max_output_tokens=2500)
+        **_sampling(CHAT_MODEL, 2500))
     if response.status!='completed' or not response.output_text.strip():
         raise ValueError("답변 생성이 완료되지 않았습니다. 질문 범위를 좁혀주세요.")
     return {"answer":response.output_text.strip(), "model":CHAT_MODEL,

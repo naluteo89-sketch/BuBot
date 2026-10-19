@@ -30,7 +30,7 @@ from .pricing import format_price
 from .queries.facts import calculate_facts
 from .queries.period_queries import aggregate_query, declining_regions, year_mean
 from .queries.price_ranking import price_filter, rank_prices
-from .queries.year_query import last_year_answer, region_records, resolve_relative_years
+from .queries.year_query import deal_extreme, last_year_answer, region_records, resolve_relative_years
 from .regions import canonical_names, named_region, region_catalog
 
 
@@ -155,6 +155,10 @@ def _ask_core(question, *, top_k=None, region_id=None, month=None, kind=None, un
     place = ambiguous_place(question)
     if place:
         return place
+    # '최고가 아파트·거래'는 GPT 분석이 지역 순위로 보고 지역 월평균을 1위로 답하므로 먼저 규칙으로 답합니다.
+    deal = deal_extreme(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
+    if deal is not None:
+        return deal
     # '제주도 데이터 전부'처럼 값 목록을 원하면 연도 보유 범위 안내 대신 보유 월의 값을 나열합니다 (하위 지역 포함).
     records = region_records(question, corpus, unit or DISPLAY_PRICE_UNIT) if month is None else None
     if records is not None:
